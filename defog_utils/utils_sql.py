@@ -605,12 +605,18 @@ def shuffle_table_metadata(md_str: str, seed: Optional[int] = None) -> str:
                 f"join_statements does not contain 'join':\n\"{join_statements}\"\ndropping this join statement."
             )
             join_statements = ""
-    # remove create schema statements if present
-    if "CREATE SCHEMA" in md_str:
+    schema_str_list = []
+    while "CREATE SCHEMA" in md_str:
         logging.debug(
             f"md_str contains CREATE SCHEMA statements\nmd_str: {md_str}\nshuffling columns within tables only"
         )
-        md_str = re.sub("CREATE SCHEMA.*?;", "", md_str)
+        # use regex to find and extract line with CREATE SCHEMA
+        schema_match = re.search(r"CREATE SCHEMA.*;", md_str)
+        if schema_match:
+            schema_line = schema_match.group(0)
+            schema_str_list.append(schema_line)
+            md_str = md_str.replace(schema_line, "")
+        
     md_table_list = md_str.split(");")
     md_table_shuffled_list = []
     for md_table in md_table_list:
@@ -641,6 +647,8 @@ def shuffle_table_metadata(md_str: str, seed: Optional[int] = None) -> str:
         md_table_shuffled_str += (
             "\nHere is a list of joinable columns:\n" + join_statements
         )
+    if schema_str_list != []:
+        md_table_shuffled_str = "\n".join(schema_str_list) + "\n" + md_table_shuffled_str
     return md_table_shuffled_str
 
 
@@ -651,7 +659,7 @@ def replace_alias(
     Replaces the table aliases in the SQL query with the new aliases provided in the new_alias_map.
     `new_alias_map` is a dict of table_name -> new_alias.
     """
-    parsed = parse_one(sql)
+    parsed = parse_one(sql, dialect=dialect)
     existing_alias_map = {}
     # save and update the existing table aliases
     for node in parsed.walk():
@@ -664,12 +672,20 @@ def replace_alias(
                 if table_name in new_alias_map:
                     node.set("alias", new_alias_map[table_name])
             else:
-                existing_alias_map[table_name] = table_name
+                node.set("alias", new_alias_map.get(table_name, table_name))
     # go through each column, and if it has a table alias, replace it with the new alias
     for node in parsed.walk():
         if isinstance(node, exp.Column):
-            if node.table and node.table in existing_alias_map:
-                original_table_name = existing_alias_map[node.table]
-                if original_table_name in new_alias_map:
-                    node.set("table", new_alias_map[original_table_name])
-    return parsed.sql(dialect)
+            print(f"{node}: {node.table}")
+            if node.table:
+                # if in existing alias map, set the table to the new alias
+                if node.table in existing_alias_map:
+                    original_table_name = existing_alias_map[node.table]
+                    print(f"original_table_name: {original_table_name}")
+                    if original_table_name in new_alias_map:
+                        node.set("table", new_alias_map[original_table_name])
+                # else if in new alias map, set the table to the new alias
+                elif node.table in new_alias_map:
+                    print(f"Setting table to {new_alias_map[node.table]}")
+                    node.set("table", new_alias_map[node.table])
+    return parsed.sql(dialect, normalize_functions="upper", comments=False)

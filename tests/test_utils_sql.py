@@ -846,7 +846,8 @@ Here is a list of joinable columns:
 
 TEST_DB.PUBLIC.CUSTOMERS.CUSTOMER_ID can be joined with patient.ssn
 """
-        expected_md_shuffled = """CREATE TABLE physician (
+        expected_md_shuffled = """CREATE SCHEMA IF NOT EXISTS TEST_DB;
+CREATE TABLE physician (
   position character varying,
   ssn integer, --social security number of the physician
   name character varying, --name of the physician
@@ -894,20 +895,29 @@ class TestFunctions(unittest.TestCase):
 
 
 class TestReplaceAlias(unittest.TestCase):
-    def test_replace_alias(self):
-        sql = "SELECT a.name, b.age FROM users a, info b WHERE a.id = b.id"
+    def test_replace_alias_change_existing_alias(self):
+        # should replace users a with users u and info b with info i
+        sql = "SELECT a.name, b.age FROM users a JOIN info b ON a.id = b.id"
         new_alias_map = {"users": "u", "info": "i"}
-        expected = "SELECT u.name, i.age FROM users AS u, info AS i WHERE u.id = i.id"
+        expected = "SELECT u.name, i.age FROM users AS u JOIN info AS i ON u.id = i.id"
         self.assertEqual(replace_alias(sql, new_alias_map), expected)
 
     def test_replace_alias_no_alias(self):
-        sql = "SELECT name, age FROM users JOIN info WHERE users.id = info.id"
+        # should add alias to tables if not present
+        sql = "SELECT name, age FROM users JOIN info ON users.id = info.id"
         new_alias_map = {"users": "u", "info": "i"}
-        expected = "SELECT name, age FROM users, info WHERE u.id = i.id"
+        expected = "SELECT name, age FROM users AS u JOIN info AS i ON u.id = i.id"
+        self.assertEqual(replace_alias(sql, new_alias_map), expected)
+
+    def test_replace_alias_no_table_alias_have_column_table(self):
+        # should replace alias in columns using new_alias_map and add alias to tables
+        sql = "SELECT users.name, info.age FROM users JOIN info ON users.id = info.id"
+        new_alias_map = {"users": "u", "info": "i"}
+        expected = "SELECT u.name, i.age FROM users AS u JOIN info AS i ON u.id = i.id"
         self.assertEqual(replace_alias(sql, new_alias_map), expected)
 
     def test_replace_alias_no_change(self):
-        sql = "SELECT a.name, b.age FROM users AS a, info AS b WHERE a.id = b.id"
+        sql = "SELECT a.name, b.age FROM users AS a JOIN info AS b ON a.id = b.id"
         new_alias_map = {"users": "a", "logs": "l"}
         expected = sql
         self.assertEqual(replace_alias(sql, new_alias_map), expected)
@@ -931,7 +941,15 @@ RIGHT JOIN unique_games ug ON pg.game_id = ug.gm_game_id;"""
             "game_events": "ge",
             "player_stats": "ps",
         }
-        expected = """WITH player_games AS (SELECT g.gm_game_id AS game_id, p.pl_player_id AS player_id, p.pl_team_id AS team_id FROM games AS g JOIN players AS p ON g.gm_home_team_id = p.pl_team_id OR g.gm_away_team_id = p.pl_team_id), unique_games AS (SELECT DISTINCT gm_game_id FROM games) SELECT CAST(COUNT(DISTINCT pg.game_id) AS REAL) / NULLIF(COUNT(DISTINCT ug.gm_game_id), 0) AS fraction FROM player_games AS pg RIGHT JOIN unique_games AS ug ON pg.game_id = ug.gm_game_id"""
+        expected = """WITH player_games AS (SELECT g.gm_game_id AS game_id, p.pl_player_id AS player_id, p.pl_team_id AS team_id FROM games AS g JOIN players AS p ON g.gm_home_team_id = p.pl_team_id OR g.gm_away_team_id = p.pl_team_id), unique_games AS (SELECT DISTINCT gm_game_id FROM games AS g) SELECT CAST(COUNT(DISTINCT pg.game_id) AS DOUBLE PRECISION) / NULLIF(COUNT(DISTINCT ug.gm_game_id), 0) AS fraction FROM player_games AS pg RIGHT JOIN unique_games AS ug ON pg.game_id = ug.gm_game_id"""
+        result = replace_alias(sql, new_alias_map)
+        print(result)
+        self.assertEqual(result, expected)
+
+    def test_sql_2(self):
+        sql = "SELECT train.year, manufacturer, AVG(train.capacity) AS average_capacity FROM train WHERE train.manufacturer ILIKE '%Mfr 1%' GROUP BY train.year, train.manufacturer ORDER BY train.year;"
+        new_alias_map = {"train": "t"}
+        expected = "SELECT t.year, manufacturer, AVG(t.capacity) AS average_capacity FROM train AS t WHERE t.manufacturer ILIKE '%Mfr 1%' GROUP BY t.year, t.manufacturer ORDER BY t.year"
         result = replace_alias(sql, new_alias_map)
         print(result)
         self.assertEqual(result, expected)
