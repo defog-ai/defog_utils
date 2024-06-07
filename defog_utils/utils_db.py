@@ -18,14 +18,23 @@ creds_local_pg = {
 }
 
 reserved_keywords = [
+    "abs",
     "all",
     "and",
     "any",
+    "avg",
     "as",
+    "at",
     "asc",
+    "bit",
+    "by",
+    "day",
+    "dec",
     "do",
+    "div",
     "end",
     "for",
+    "go",
     "in",
     "is",
     "not",
@@ -456,8 +465,10 @@ def generate_aliases(
     for original_table_name in table_names:
         if "." in original_table_name:
             table_name = original_table_name.rsplit(".", 1)[-1]
+            print(f"split: {original_table_name.rsplit('.', 1)}")
         else:
             table_name = original_table_name
+            print(f"original: {table_name}")
         if "_" in table_name:
             # get the first letter of each subword delimited by "_"
             alias = "".join([word[0] for word in table_name.split("_")]).lower()
