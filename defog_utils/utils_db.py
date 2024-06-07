@@ -441,7 +441,8 @@ def parse_md(md_str: str) -> Dict[str, List[Dict[str, str]]]:
 def get_table_names(md: str) -> List[str]:
     """
     Given a string of metadata formatted as a series of
-    CREATE TABLE statements, return a list of table names.
+    CREATE TABLE statements, return a list of table names in the same order as 
+    they appear in the metadata.
     """
     table_names = []
     if "CREATE TABLE" not in md:
@@ -455,20 +456,18 @@ def get_table_names(md: str) -> List[str]:
     return table_names
 
 
-def generate_aliases(
+def generate_aliases_dict(
     table_names: List, reserved_keywords: List[str] = reserved_keywords
 ) -> str:
     """
-    Generate aliases for table names
+    Generate aliases for table names as a dictionary mapping of table names to aliases
     """
     aliases = {}
     for original_table_name in table_names:
         if "." in original_table_name:
             table_name = original_table_name.rsplit(".", 1)[-1]
-            print(f"split: {original_table_name.rsplit('.', 1)}")
         else:
             table_name = original_table_name
-            print(f"original: {table_name}")
         if "_" in table_name:
             # get the first letter of each subword delimited by "_"
             alias = "".join([word[0] for word in table_name.split("_")]).lower()
@@ -493,8 +492,26 @@ def generate_aliases(
             num += 1
 
         aliases[original_table_name] = alias
+    return aliases
 
+def mk_alias_str(table_aliases: Dict[str, str]) -> str:
+    """
+    Given a dictionary of table names to aliases, return a string of aliases in the form:
+    -- table1 AS t1
+    -- table2 AS t2
+    """
     aliases_str = ""
-    for table_name, alias in aliases.items():
+    for table_name, alias in table_aliases.items():
         aliases_str += f"-- {table_name} AS {alias}\n"
     return aliases_str
+
+def generate_aliases(
+    table_names: List, reserved_keywords: List[str] = reserved_keywords
+) -> str:
+    """
+    Generate aliases for table names in a comment str form, eg
+    -- table1 AS t1
+    -- table2 AS t2
+    """
+    aliases = generate_aliases_dict(table_names, reserved_keywords)
+    return mk_alias_str(aliases)
