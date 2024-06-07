@@ -676,16 +676,13 @@ def replace_alias(
     # go through each column, and if it has a table alias, replace it with the new alias
     for node in parsed.walk():
         if isinstance(node, exp.Column):
-            print(f"{node}: {node.table}")
             if node.table:
                 # if in existing alias map, set the table to the new alias
                 if node.table in existing_alias_map:
                     original_table_name = existing_alias_map[node.table]
-                    print(f"original_table_name: {original_table_name}")
                     if original_table_name in new_alias_map:
                         node.set("table", new_alias_map[original_table_name])
                 # else if in new alias map, set the table to the new alias
                 elif node.table in new_alias_map:
-                    print(f"Setting table to {new_alias_map[node.table]}")
                     node.set("table", new_alias_map[node.table])
     return parsed.sql(dialect, normalize_functions="upper", comments=False)

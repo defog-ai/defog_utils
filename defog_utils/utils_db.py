@@ -458,7 +458,7 @@ def get_table_names(md: str) -> List[str]:
 
 def generate_aliases_dict(
     table_names: List, reserved_keywords: List[str] = reserved_keywords
-) -> str:
+) -> Dict[str, str]:
     """
     Generate aliases for table names as a dictionary mapping of table names to aliases
     """
