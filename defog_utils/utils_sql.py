@@ -457,7 +457,7 @@ def get_sql_features(
                 features.date_time_type_conversion = True
         # other non-defined non-Anonymous expressions in sqlglot
         else:
-            if "now" in str(node).lower():
+            if "'now'" in str(node).lower():
                 features.current_date_time = True
 
     if md_cols and md_tables:
