@@ -264,7 +264,7 @@ def get_sql_features(
     md_cols: Optional[Set[str]] = None,
     md_tables: Optional[Set[str]] = None,
     extra_column_info: Optional[Dict[str, str]] = None,
-    dialect: str = "postgres",
+    dialect: str = None,
 ) -> SqlFeatures:
     """
     Extracts features from a SQL query string by making a single pass through the parsed SQL abstract syntax tree (AST).
