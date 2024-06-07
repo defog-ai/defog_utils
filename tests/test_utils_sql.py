@@ -174,6 +174,11 @@ class TestGetSqlFeatures(unittest.TestCase):
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertTrue(features.date_trunc)
 
+    def test_strftime(self):
+        sql = "SELECT STRFTIME('%Y-%m-%d', column) FROM table"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertTrue(features.strftime)
+
     def test_date_part(self):
         sql = "SELECT EXTRACT(YEAR FROM column) FROM table"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
@@ -192,6 +197,12 @@ class TestGetSqlFeatures(unittest.TestCase):
         sql = "SELECT NOW() - ts FROM table"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertTrue(features.current_date_time)
+        sql = "WITH RECURSIVE week_series AS (SELECT DATE('2023-01-01') AS week UNION ALL SELECT DATE(week, '+7 days') FROM week_series WHERE week < DATE('now', 'weekday 0', '-7 days')), order_item_counts AS (SELECT o.order_status, strftime('%Y-%W', o.date_order_placed) AS week, o.order_id, COUNT(oi.order_item_id) AS order_item_count FROM orders AS o JOIN order_items AS oi ON o.order_id = oi.order_id WHERE o.date_order_placed >= '2023-01-01' GROUP BY o.order_status, week, o.order_id), avg_item_counts AS (SELECT o.order_status, o.week, ROUND(AVG(o.order_item_count), 3) AS avg_item_count FROM order_item_counts AS o GROUP BY o.order_status, o.week), status_week_range AS (SELECT s.order_status, w.week FROM (SELECT DISTINCT order_status FROM orders) AS s CROSS JOIN week_series AS w) SELECT s.order_status, s.week, COALESCE(a.avg_item_count, 0) AS avg_item_count FROM status_week_range AS s LEFT JOIN avg_item_counts AS a ON s.order_status = a.order_status AND s.week = a.week ORDER BY s.order_status, s.week;"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertTrue(features.current_date_time)
+        sql = "SELECT * FROM col_now"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertFalse(features.current_date_time)
 
     def test_interval(self):
         sql = "SELECT column + INTERVAL '1 day' FROM table"
@@ -456,7 +467,7 @@ WITH stock_stats AS (
 """
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         features_compact = features.compact()
-        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
@@ -494,7 +505,7 @@ LEFT JOIN yearly_max_rpm ymr ON y.year = ymr.year ORDER BY y.year NULLS LAST;
             sql, {"year", "rpm", "manufacturer", "train_id"}, {"train"}
         )
         features_compact = features.compact()
-        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
+        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
