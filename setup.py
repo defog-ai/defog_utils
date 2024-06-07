@@ -6,7 +6,7 @@ setup(
     description="Various helper functions used by Defog projects",
     author="defog",
     author_email="support@defog.ai",
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests"]),
     install_requires=[
         "numpy",
         "sqlglot",
