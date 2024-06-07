@@ -136,8 +136,8 @@ def mk_create_table_ddl(table_name: str, columns: List[Dict[str, str]]) -> str:
     md_create += f"CREATE TABLE {table_name} (\n"
     for i, column in enumerate(columns):
         col_name = column["column_name"]
-        # if column name has spaces, wrap it in double quotes
-        if " " in col_name:
+        # if column name has spaces and hasn't been wrapped in double quotes, wrap it in double quotes
+        if " " in col_name and not col_name.startswith('"'):
             col_name = f'"{col_name}"'
         dtype = convert_data_type_postgres(column["data_type"])
         col_desc = column.get("column_description", "").replace("\n", " ")
