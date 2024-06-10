@@ -493,6 +493,10 @@ def parse_md(md_str: str) -> Dict[str, List[Dict[str, str]]]:
             else:
                 # if -- is found, then the second part is the description
                 column_name_type, column_desc = column_str_split
+            # if "primary key" is found in the column_name_type, then we add it to the description
+            if "primary key" in column_name_type.lower():
+                column_desc = "Primary key. " + column_desc
+                column_name_type = column_name_type.replace("primary key", "").strip()
             if " " not in column_name_type:
                 # if no space is found, then there is no data type, and we skip that invalid line
                 continue
