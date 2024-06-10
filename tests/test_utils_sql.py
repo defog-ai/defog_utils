@@ -6,7 +6,6 @@ from defog_utils.defog_utils.utils_sql import (
     get_sql_features,
     is_date_or_time_str,
     is_sorry_sql,
-    normalize_sql,
     replace_alias,
     shuffle_table_metadata,
 )

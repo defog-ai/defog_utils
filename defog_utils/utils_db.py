@@ -486,8 +486,9 @@ def parse_md(md_str: str) -> Dict[str, List[Dict[str, str]]]:
             # split the column_str into the column name/type and the description
             column_str_split = re.split(r",?\s*--", column_str, 1)
             if len(column_str_split) == 1:
-                # if no -- is found, then there is no description
-                column_name_type = column_str.split(",", 1)[0]
+                # if no -- is found, then there is no description and we will
+                # just remove the trailing comma and optional spaces if it exists
+                column_name_type = re.sub(r",?\s*$", "", column_str_split[0])
                 column_desc = ""
             else:
                 # if -- is found, then the second part is the description
