@@ -954,6 +954,13 @@ RIGHT JOIN unique_games ug ON pg.game_id = ug.gm_game_id;"""
         print(result)
         self.assertEqual(result, expected)
 
+    def test_sql_3(self):
+        sql = "SELECT CAST((SELECT COUNT(aw.artwork_id) FROM artwork aw WHERE aw.year_created = 1888 AND aw.description IS NULL) AS FLOAT) / NULLIF((SELECT COUNT(at.artist_id) FROM artists AT WHERE at.nationality ilike '%French%'), 0) AS ratio;"
+        new_alias_map = {'exhibit_artworks': 'ea', 'exhibitions': 'e', 'collaborations': 'c', 'artwork': 'a', 'artists': 'ar'}
+        expected = "SELECT CAST((SELECT COUNT(a.artwork_id) FROM artwork AS a WHERE a.year_created = 1888 AND a.description IS NULL) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(ar.artist_id) FROM artists AS ar WHERE ar.nationality ILIKE '%French%'), 0) AS ratio"
+        result = replace_alias(sql, new_alias_map)
+        print(result)
+        self.assertEqual(result, expected)
 
 if __name__ == "__main__":
     unittest.main()

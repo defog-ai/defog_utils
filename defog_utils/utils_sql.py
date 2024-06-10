@@ -656,8 +656,11 @@ def replace_alias(
     sql: str, new_alias_map: Dict[str, str], dialect: str = "postgres"
 ) -> str:
     """
-    Replaces the table aliases in the SQL query with the new aliases provided in the new_alias_map.
+    Replaces the table aliases in the SQL query with the new aliases provided in 
+    the new_alias_map.
     `new_alias_map` is a dict of table_name -> new_alias.
+    Note that aliases are always in lowercase, and will be converted to lowercase
+    if necessary.
     """
     parsed = parse_one(sql, dialect=dialect)
     existing_alias_map = {}
@@ -667,7 +670,8 @@ def replace_alias(
             table_name = node.name
             # save the existing alias if present
             if node.alias:
-                existing_alias_map[node.alias] = table_name
+                node_alias = node.alias.lower()
+                existing_alias_map[node_alias] = table_name
                 # set the alias to the new alias if it exists in the new_alias_map
                 if table_name in new_alias_map:
                     node.set("alias", new_alias_map[table_name])
@@ -677,12 +681,13 @@ def replace_alias(
     for node in parsed.walk():
         if isinstance(node, exp.Column):
             if node.table:
+                node_table = node.table.lower()
                 # if in existing alias map, set the table to the new alias
-                if node.table in existing_alias_map:
-                    original_table_name = existing_alias_map[node.table]
+                if node_table in existing_alias_map:
+                    original_table_name = existing_alias_map[node_table]
                     if original_table_name in new_alias_map:
                         node.set("table", new_alias_map[original_table_name])
                 # else if in new alias map, set the table to the new alias
-                elif node.table in new_alias_map:
-                    node.set("table", new_alias_map[node.table])
+                elif node_table in new_alias_map:
+                    node.set("table", new_alias_map[node_table])
     return parsed.sql(dialect, normalize_functions="upper", comments=False)

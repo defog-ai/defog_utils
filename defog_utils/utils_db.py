@@ -284,6 +284,71 @@ def fix_md(md: Dict[str, List[Dict[str, str]]]) -> Dict[str, List[Dict[str, str]
     return md_new
 
 
+def test_valid_md_sql(sql: str, md: dict, creds: Dict = None, conn = None, verbose: bool = False):
+    """
+    Test custom metadata and a sql query
+    This will perform the following steps:
+    1. Delete the tables in the metadata (to ensure that similarly named tables from previous tests are not used)
+    2. Create the tables in the metadata. If any errors occur with the metadata, we return early.
+    3. Run the sql query
+    4. Delete the tables created
+    If provided with the variable `conn`, this reuses the same database connection
+    to avoid creating a new connection for each query. Otherwise it will connect
+    via psycopg2 using the credentials provided (note that creds should set db_name)
+    This will not manage `conn` in any way (eg closing `conn`) - it is left to 
+    the caller to manage the connection.
+    Returns tuple of (sql_valid, md_valid, err_message)
+    """
+    try:
+        local_conn = False
+        if conn is not None and conn.closed == 0:
+            cur = conn.cursor()
+        else:
+            conn = psycopg2.connect(
+                dbname=creds["db_name"],
+                user=creds["user"],
+                password=creds["password"],
+                host=creds["host"],
+                port=creds["port"],
+            )
+            local_conn = True
+            cur = conn.cursor()
+        delete_ddl = mk_delete_ddl(md)
+        cur.execute(delete_ddl)
+        if verbose:
+            print(f"Deleted tables with: {delete_ddl}")
+        create_ddl = mk_create_ddl(md)
+        cur.execute(create_ddl)
+        if verbose:
+            print(f"Created tables with: {create_ddl}")
+    except Exception as e:
+        if "cur" in locals() or "cur" in globals():
+            cur.close()
+        if local_conn:
+            conn.close()
+        return False, False, e
+    try:
+        cur.execute(sql)
+        results = cur.fetchall()
+        if verbose:
+            for row in results:
+                print(row)
+        delete_ddl = mk_delete_ddl(md)
+        cur.execute(delete_ddl)
+        if verbose:
+            print(f"Deleted tables with: {delete_ddl}")
+        cur.close()
+        if local_conn:
+            conn.close()
+        return True, True, None
+    except Exception as e:
+        if "cur" in locals() or "cur" in globals():
+            cur.close()
+        if local_conn:
+            conn.close()
+        return False, True, e
+
+
 def test_valid_md(
     sql: str, md: dict, creds: dict, verbose: bool = False, idx: str = ""
 ) -> Tuple[bool, Optional[Exception]]:
@@ -489,6 +554,7 @@ def generate_aliases_dict(
 ) -> Dict[str, str]:
     """
     Generate aliases for table names as a dictionary mapping of table names to aliases
+    Aliases should always be in lower case
     """
     aliases = {}
     for original_table_name in table_names:
