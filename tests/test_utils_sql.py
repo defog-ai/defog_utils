@@ -1,6 +1,7 @@
 import unittest
 from defog_utils.defog_utils.utils_sql import (
     add_space_padding,
+    fix_comma,
     get_schema_features,
     get_sql_features,
     is_date_or_time_str,
@@ -821,6 +822,23 @@ class TestSchemaFeatures(unittest.TestCase):
         self.assertEqual(positive_features, expected_positive)
 
 
+class TestFixComma(unittest.TestCase):
+    def test_fix_comma_1(self):
+        cols = [
+            "  CUSTOMER_EMAIL VARCHAR,",
+            "  CUSTOMER_PHONE VARCHAR(200) --Phone number of the customer", # add comma
+            "  value numeric(10,2),", # remove trailing comma
+        ]
+        expected = [
+            "  CUSTOMER_EMAIL VARCHAR,",
+            "  CUSTOMER_PHONE VARCHAR(200), --Phone number of the customer",
+            "  value numeric(10,2)",
+        ]
+        result = fix_comma(cols)
+        print(result)
+        self.assertEqual(result, expected)
+
+
 class TestShuffleTableMetadata(unittest.TestCase):
     def test_shuffle_table_metadata_seed_1(self):
         input_md_str = """CREATE SCHEMA IF NOT EXISTS TEST_DB;
@@ -874,10 +892,20 @@ TEST_DB.PUBLIC.CUSTOMERS.CUSTOMER_ID can be joined with patient.ssn"""
     def test_shuffle_table_metadata_seed_2(self):
         input_md_str = """CREATE TABLE branch_info (
   branch_open_date date, --Date branch opened
+  value numeric(10,2),
   manager_name varchar(100) --Name of the branch manager
+);
+CREATE TABLE employee (
+  employee_id integer,
+  ytd_return numeric(5,2)
 );"""
-        expected_md_shuffled = """CREATE TABLE branch_info (
+        expected_md_shuffled = """CREATE TABLE employee (
+  employee_id integer,
+  ytd_return numeric(5,2)
+);
+CREATE TABLE branch_info (
   manager_name varchar(100), --Name of the branch manager
+  value numeric(10,2),
   branch_open_date date --Date branch opened
 );"""
         md_shuffled = shuffle_table_metadata(input_md_str, 0)

@@ -565,22 +565,28 @@ def fix_comma(cols: List[str]) -> List[str]:
             if "," not in col[: col.index("--")]:
                 # use re.sub to replace (any whitespace)-- with , --
                 col = re.sub(r"\s*--", ", --", col)
-        # check if string ends with comma
-        elif "," not in col:
+        # check if string ends with comma (optionally with additional spaces)
+        elif not re.search(r",\s*$", col):
             # replace all trailing spaces with ,
             col = re.sub(r"\s+$", ",", col)
         fixed_cols.append(col)
     # for the last col, we want to remove the comma
     last_col = fixed_cols[-1]
     if "--" in last_col:
-        # check if comma is before comment and remove if present
-        last_col_split = last_col.split("--", 1)
-        if "," in last_col_split[0]:
-            last_col = (
-                "".join(last_col_split[0].split(",", 1)) + "--" + last_col_split[1]
-            )
-    elif "," in last_col:
-        last_col = "".join(last_col.split(",", 1))
+        # check if comma is after a word/closing brace, followed by spaces before -- and remove if present
+
+        pre_comment, after_comment = last_col.split("--", 1)
+        # check if pre_comment ends with a comma with optional spaces
+        if re.search(r",\s*$", pre_comment):
+            pre_comment = re.sub(r",\s*$", "", pre_comment)
+            # remove any trailing spaces in pre_comment
+            pre_comment = pre_comment.rstrip()
+            last_col = pre_comment + " --" + after_comment
+    # if last_col ends with a comma with optional spaces, remove it
+    elif re.search(r",\s*$", last_col):
+        last_col = re.sub(r",\s*$", "", last_col)
+        # remove any trailing spaces in last_col
+        last_col = last_col.rstrip()
     fixed_cols[-1] = last_col
     return fixed_cols
 
