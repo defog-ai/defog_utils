@@ -474,7 +474,7 @@ def parse_md(md_str: str) -> Dict[str, List[Dict[str, str]]]:
         # split the table_md_str into the header and the columns
         header, columns_str = table_md_str.split("(", 1)
         table_name = header.split("CREATE TABLE", 1)[1].strip()
-        if "." in table_name:
+        if "." in table_name and not table_name.startswith('"'):
             schema, table_name = table_name.split(".", 1)
         else:
             schema = None
