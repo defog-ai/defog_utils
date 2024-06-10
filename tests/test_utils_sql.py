@@ -822,10 +822,10 @@ class TestSchemaFeatures(unittest.TestCase):
 
 
 class TestShuffleTableMetadata(unittest.TestCase):
-    def test_shuffle_table_metadata_seed(self):
+    def test_shuffle_table_metadata_seed_1(self):
         input_md_str = """CREATE SCHEMA IF NOT EXISTS TEST_DB;
 CREATE TABLE TEST_DB.PUBLIC.CUSTOMERS (
-  CUSTOMER_EMAIL VARCHAR, --Email address of the customer
+  CUSTOMER_EMAIL VARCHAR,
   CUSTOMER_PHONE VARCHAR, --Phone number of the customer
   CUSTOMER_ID NUMERIC, --Unique identifier for each customer
   CUSTOMER_NAME VARCHAR --Name of the customer
@@ -855,8 +855,8 @@ CREATE TABLE physician (
 );
 CREATE TABLE TEST_DB.PUBLIC.CUSTOMERS (
   CUSTOMER_PHONE VARCHAR, --Phone number of the customer
-  CUSTOMER_NAME VARCHAR , --Name of the customer
-  CUSTOMER_EMAIL VARCHAR, --Email address of the customer
+  CUSTOMER_NAME VARCHAR, --Name of the customer
+  CUSTOMER_EMAIL VARCHAR,
   CUSTOMER_ID NUMERIC --Unique identifier for each customer
 );
 CREATE TABLE patient (
@@ -869,6 +869,19 @@ TEST_DB.PUBLIC.CUSTOMERS.CUSTOMER_ID can be joined with patient.ssn"""
 
         md_shuffled = shuffle_table_metadata(input_md_str, 42)
         self.maxDiff = None
+        self.assertEqual(md_shuffled, expected_md_shuffled)
+    
+    def test_shuffle_table_metadata_seed_2(self):
+        input_md_str = """CREATE TABLE branch_info (
+  branch_open_date date, --Date branch opened
+  manager_name varchar(100) --Name of the branch manager
+);"""
+        expected_md_shuffled = """CREATE TABLE branch_info (
+  manager_name varchar(100), --Name of the branch manager
+  branch_open_date date --Date branch opened
+);"""
+        md_shuffled = shuffle_table_metadata(input_md_str, 0)
+        print(md_shuffled)
         self.assertEqual(md_shuffled, expected_md_shuffled)
 
 

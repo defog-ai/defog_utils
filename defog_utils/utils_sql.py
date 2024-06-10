@@ -563,10 +563,12 @@ def fix_comma(cols: List[str]) -> List[str]:
         if "--" in col:
             # check if comma is before comment
             if "," not in col[: col.index("--")]:
-                col = col.replace("--", ", --")
+                # use re.sub to replace (any whitespace)-- with , --
+                col = re.sub(r"\s*--", ", --", col)
         # check if string ends with comma
         elif "," not in col:
-            col += ","
+            # replace all trailing spaces with ,
+            col = re.sub(r"\s+$", ",", col)
         fixed_cols.append(col)
     # for the last col, we want to remove the comma
     last_col = fixed_cols[-1]
