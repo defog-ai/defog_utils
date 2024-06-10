@@ -503,7 +503,10 @@ def parse_md(md_str: str) -> Dict[str, List[Dict[str, str]]]:
             # split the column_name_type into the column name and the data type
             # some data types have spaces between them, so we handle these cases separately,
             # and we assume the rest of the data types to have no spaces
-            if "double precision" in column_name_type:
+            if "numeric" in column_name_type and ", " in column_name_type:
+                column_name = column_name_type.split("numeric", 1)[0]
+                column_type = "numeric" + column_name_type.split("numeric", 1)[1]
+            elif "double precision" in column_name_type:
                 column_name = column_name_type.split("double precision", 1)[0]
                 column_type = "double precision"
             elif "character varying" in column_name_type:

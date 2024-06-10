@@ -415,6 +415,41 @@ CREATE TABLE acct_perf (
         md = parse_md(md_str)
         print(md)
         self.assertDictEqual(md, expected)
+    
+    def test_parse_md_3(self):
+        md_str = """CREATE TABLE acct_trx (
+  trx_units numeric(10, 2),
+  asset_id integer,
+  trx_amount numeric(10, 2),
+  details varchar(500),
+  id integer, --Primary key for acct_trx table, joinable with other tables
+  settle_date date, --Date transaction settled
+  symbol varchar(10)
+);
+CREATE TABLE acct_perf (
+  ytd_return numeric(5, 2),
+  acct_snapshot_date text, --format: yyyy-mm-dd
+  account_id integer --Primary key, foreign key to cust_acct table
+);"""
+        expected = {
+            "acct_trx": [
+                {"column_name": "trx_units", "data_type": "numeric(10, 2)", "column_description": ""},
+                {"column_name": "asset_id", "data_type": "integer", "column_description": ""},
+                {"column_name": "trx_amount", "data_type": "numeric(10, 2)", "column_description": ""},
+                {"column_name": "details", "data_type": "varchar(500)", "column_description": ""},
+                {"column_name": "id", "data_type": "integer", "column_description": "Primary key for acct_trx table, joinable with other tables"},
+                {"column_name": "settle_date", "data_type": "date", "column_description": "Date transaction settled"},
+                {"column_name": "symbol", "data_type": "varchar(10)", "column_description": ""},
+            ],
+            "acct_perf": [
+                {"column_name": "ytd_return", "data_type": "numeric(5, 2)", "column_description": ""},
+                {"column_name": "acct_snapshot_date", "data_type": "text", "column_description": "format: yyyy-mm-dd"},
+                {"column_name": "account_id", "data_type": "integer", "column_description": "Primary key, foreign key to cust_acct table"},
+            ],
+        }
+        md = parse_md(md_str)
+        print(md)
+        self.assertDictEqual(md, expected)
 
 
 class TestGetTableNames(unittest.TestCase):
