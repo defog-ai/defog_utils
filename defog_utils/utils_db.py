@@ -1,6 +1,6 @@
 # File for all db-related operations confined to psycopg2/sqlalchemy
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import psycopg2
 
@@ -223,15 +223,19 @@ def mk_create_ddl(md: Dict[str, List[Dict[str, str]]]) -> str:
     return md_create
 
 
-def mk_delete_ddl(
-    md: Dict[str, List[Dict[str, str]]], schema_in_table_name: bool = False
-) -> str:
+def mk_delete_ddl(md: Dict[str, Any]) -> str:
     """
     Return a DDL statement for deleting tables from a metadata dictionary
     `md` has the same structure as in `mk_create_ddl`
     This is for purging our temporary tables after creating them and testing the sql query
     """
-    if schema_in_table_name:
+    is_schema = False
+    for _, contents in md.items():
+        # check if the contents is a dictionary of tables or a list of tables
+        is_schema = isinstance(contents, Dict)
+        break
+        
+    if is_schema:
         md_delete = ""
         for schema, tables in md.items():
             schema = normalize_table_name(schema)
