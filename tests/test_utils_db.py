@@ -180,7 +180,41 @@ class TestMkCreateDDLWithSchema(unittest.TestCase):
 
 
 class TestMkDeleteDDLWithSchema(unittest.TestCase):
-    def test_mk_delete_ddl(self):
+    def test_mk_delete_ddl_tables(self):
+        md = {
+            "table1": [
+                {
+                    "column_name": "col1",
+                    "data_type": "int",
+                    "column_description": "primary key",
+                },
+                {
+                    "column_name": "col2",
+                    "data_type": "text",
+                    "column_description": "not null",
+                },
+                {"column_name": "col3", "data_type": "text", "column_description": ""},
+            ],
+            "table2": [
+                {
+                    "column_name": "col1",
+                    "data_type": "int",
+                    "column_description": "primary key",
+                },
+                {
+                    "column_name": "col2",
+                    "data_type": "text",
+                    "column_description": "not null",
+                },
+            ],
+        }
+        expected_output = (
+            "DROP TABLE IF EXISTS table1 CASCADE;\n"
+            "DROP TABLE IF EXISTS table2 CASCADE;\n"
+        )
+        self.assertEqual(mk_delete_ddl(md), expected_output)
+
+    def test_mk_delete_ddl_schema(self):
         md = {
             "schema1": {
                 "table1": [
@@ -215,7 +249,7 @@ class TestMkDeleteDDLWithSchema(unittest.TestCase):
             }
         }
         expected_output = "DROP SCHEMA IF EXISTS schema1 CASCADE;\n"
-        self.assertEqual(mk_delete_ddl(md, True), expected_output)
+        self.assertEqual(mk_delete_ddl(md), expected_output)
 
 
 class TestFixMd(unittest.TestCase):
