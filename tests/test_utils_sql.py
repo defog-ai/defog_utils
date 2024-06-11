@@ -989,7 +989,7 @@ RIGHT JOIN unique_games ug ON pg.game_id = ug.gm_game_id;"""
             "game_events": "ge",
             "player_stats": "ps",
         }
-        expected = """WITH player_games AS (SELECT g.gm_game_id AS game_id, p.pl_player_id AS player_id, p.pl_team_id AS team_id FROM games AS g JOIN players AS p ON g.gm_home_team_id = p.pl_team_id OR g.gm_away_team_id = p.pl_team_id), unique_games AS (SELECT DISTINCT gm_game_id FROM games AS g) SELECT CAST(COUNT(DISTINCT pg.game_id) AS REAL) / NULLIF(COUNT(DISTINCT ug.gm_game_id), 0) AS fraction FROM player_games AS pg RIGHT JOIN unique_games AS ug ON pg.game_id = ug.gm_game_id"""
+        expected = """WITH player_games AS (SELECT g.gm_game_id AS game_id, p.pl_player_id AS player_id, p.pl_team_id AS team_id FROM games AS g JOIN players AS p ON g.gm_home_team_id = p.pl_team_id OR g.gm_away_team_id = p.pl_team_id), unique_games AS (SELECT DISTINCT gm_game_id FROM games AS g) SELECT CAST(COUNT(DISTINCT pg.game_id) AS DOUBLE PRECISION) / NULLIF(COUNT(DISTINCT ug.gm_game_id), 0) AS fraction FROM player_games AS pg RIGHT JOIN unique_games AS ug ON pg.game_id = ug.gm_game_id"""
         result = replace_alias(sql, new_alias_map)
         print(result)
         self.assertEqual(result, expected)
@@ -1005,7 +1005,7 @@ RIGHT JOIN unique_games ug ON pg.game_id = ug.gm_game_id;"""
     def test_sql_3(self):
         sql = "SELECT CAST((SELECT COUNT(aw.artwork_id) FROM artwork aw WHERE aw.year_created = 1888 AND aw.description IS NULL) AS FLOAT) / NULLIF((SELECT COUNT(at.artist_id) FROM artists AT WHERE at.nationality ilike '%French%'), 0) AS ratio;"
         new_alias_map = {'exhibit_artworks': 'ea', 'exhibitions': 'e', 'collaborations': 'c', 'artwork': 'a', 'artists': 'ar'}
-        expected = "SELECT CAST((SELECT COUNT(a.artwork_id) FROM artwork AS a WHERE a.year_created = 1888 AND a.description IS NULL) AS REAL) / NULLIF((SELECT COUNT(ar.artist_id) FROM artists AS ar WHERE ar.nationality ILIKE '%French%'), 0) AS ratio"
+        expected = "SELECT CAST((SELECT COUNT(a.artwork_id) FROM artwork AS a WHERE a.year_created = 1888 AND a.description IS NULL) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(ar.artist_id) FROM artists AS ar WHERE ar.nationality ILIKE '%French%'), 0) AS ratio"
         result = replace_alias(sql, new_alias_map)
         print(result)
         self.assertEqual(result, expected)
