@@ -386,7 +386,7 @@ def get_sql_features(
             features.lag = True
         elif isinstance(node, exp.RowNumber):
             features.rank = True
-        elif isinstance(node, exp.DateTrunc):
+        elif isinstance(node, exp.DateTrunc) or isinstance(node, exp.TimestampTrunc):
             features.date_trunc = True
         elif isinstance(node, exp.TimeToStr):
             features.strftime = True

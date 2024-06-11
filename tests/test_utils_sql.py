@@ -173,6 +173,8 @@ class TestGetSqlFeatures(unittest.TestCase):
         sql = "SELECT DATE_TRUNC('day', column) FROM table"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertTrue(features.date_trunc)
+        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        self.assertTrue(features.date_trunc)
 
     def test_strftime(self):
         sql = "SELECT STRFTIME('%Y-%m-%d', column) FROM table"
