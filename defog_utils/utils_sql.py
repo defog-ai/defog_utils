@@ -264,7 +264,7 @@ def get_sql_features(
     md_cols: Optional[Set[str]] = None,
     md_tables: Optional[Set[str]] = None,
     extra_column_info: Optional[Dict[str, str]] = None,
-    dialect: str = None,
+    dialect: str = "postgres",
 ) -> SqlFeatures:
     """
     Extracts features from a SQL query string by making a single pass through the parsed SQL abstract syntax tree (AST).
@@ -386,10 +386,10 @@ def get_sql_features(
             features.lag = True
         elif isinstance(node, exp.RowNumber):
             features.rank = True
-        elif isinstance(node, exp.DateTrunc):
+        elif isinstance(node, exp.DateTrunc) or isinstance(node, exp.TimestampTrunc):
             features.date_trunc = True
-        elif isinstance(node, exp.TimeToStr):
-            features.strftime = True
+        elif isinstance(node, exp.StrToTime):
+            features.date_time_type_conversion = True
         elif isinstance(node, exp.Extract):
             features.date_part = True
         elif type(node) in current_date_time_expressions:
@@ -403,8 +403,10 @@ def get_sql_features(
                 if isinstance(c, exp.DataType) and str(c) in date_time_types:
                     features.date_time_type_conversion = True
                     break
-        elif isinstance(node, exp.ToChar):
+        elif isinstance(node, exp.ToChar) or isinstance(node, exp.TimeToStr):
             features.date_time_format = True
+            if isinstance(node, exp.TimeToStr):
+                features.strftime = True
         elif isinstance(node, exp.GenerateSeries):
             features.generate_timeseries = True
         elif isinstance(node, exp.DPipe):

@@ -305,7 +305,7 @@ def test_valid_md_sql(sql: str, md: dict, creds: Dict = None, conn = None, verbo
     """
     try:
         local_conn = False
-        if conn is not None and conn.closed == 0:
+        if conn is not None:
             cur = conn.cursor()
         else:
             conn = psycopg2.connect(
@@ -330,7 +330,7 @@ def test_valid_md_sql(sql: str, md: dict, creds: Dict = None, conn = None, verbo
             cur.close()
         if local_conn:
             conn.close()
-        return False, False, e
+        return False, False, str(e)
     try:
         cur.execute(sql)
         results = cur.fetchall()
