@@ -961,6 +961,17 @@ CREATE TABLE visits (
         print(md_shuffled)
         self.assertEqual(md_shuffled, expected_md_shuffled)
 
+    def test_shuffle_table_metadata_seed_4(self):
+        input_md_str = "CREATE TABLE fin_acct_perf (\n  account_id integer, --Primary key, foreign key to fin_cust_acct table\n  snapshot_date date, --Date of performance snapshot\n  ytd_return numeric(5,2) --Year-to-date return percentage\n);"
+        expected_md_shuffled = """CREATE TABLE fin_acct_perf (
+  ytd_return numeric(5,2), --Year-to-date return percentage
+  snapshot_date date, --Date of performance snapshot
+  account_id integer --Primary key, foreign key to fin_cust_acct table
+);"""
+        md_shuffled = shuffle_table_metadata(input_md_str, 0)
+        print(md_shuffled)
+        self.assertEqual(md_shuffled, expected_md_shuffled)
+
 class TestFunctions(unittest.TestCase):
     def test_is_date_or_time_str(self):
         s1 = "2022-03-19"
