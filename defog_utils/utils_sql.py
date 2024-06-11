@@ -569,8 +569,8 @@ def fix_comma(cols: List[str]) -> List[str]:
                 col = re.sub(r"\s*--", ", --", col)
         # check if string ends with comma (optionally with additional spaces)
         elif not re.search(r",\s*$", col):
-            # replace all trailing spaces with ,
-            col = re.sub(r"\s+$", ",", col)
+            # end with comma if not present
+            col = re.sub(r"\s*$", ",", col)
         fixed_cols.append(col)
     # for the last col, we want to remove the comma
     last_col = fixed_cols[-1]

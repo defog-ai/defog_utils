@@ -919,6 +919,47 @@ CREATE TABLE branch_info (
         print(md_shuffled)
         self.assertEqual(md_shuffled, expected_md_shuffled)
 
+    def test_shuffle_table_metadata_seed_3(self):
+        input_md_str = "CREATE TABLE sales (\n  pl_sales_rep_id integer,\n  pl_site_id integer,\n  pl_id integer,\n  pl_sale_date timestamp,\n  pl_product_id integer,\n  pl_contract_id integer,\n  pl_active_date timestamp,\n  pl_expiration_date timestamp,\n  pl_sale_id integer,\n  pl_purchased_item_id integer,\n  pl_remaining_passes integer,\n  pl_unit_price numeric,\n  pl_total_amount numeric,\n  pl_payment_ref_id integer,\n  pl_quantity integer,\n  pl_sale_detail_id integer,\n  pl_actual_sale_id integer,\n  pl_actual_purchased_item_id integer,\n  pl_recipient_client_id integer,\n  pl_client_id character varying,\n  pl_dt_created date,\n  pl_dt_modified date\n);\nCREATE TABLE visits (\n  pl_class_id integer,\n  pl_site_id integer,\n  pl_class_start_date_time timestamp,\n  pl_visit_id integer,\n  pl_id integer,\n  pl_client_id character varying,\n  pl_class_name character varying,\n  pl_service_name character varying,\n  pl_dt_deleted date,\n  pl_dt_updated date\n);"
+        expected_md_shuffled = """CREATE TABLE sales (
+  pl_dt_created date,
+  pl_remaining_passes integer,
+  pl_quantity integer,
+  pl_payment_ref_id integer,
+  pl_site_id integer,
+  pl_dt_modified date,
+  pl_unit_price numeric,
+  pl_client_id character varying,
+  pl_sale_id integer,
+  pl_active_date timestamp,
+  pl_actual_sale_id integer,
+  pl_product_id integer,
+  pl_id integer,
+  pl_contract_id integer,
+  pl_actual_purchased_item_id integer,
+  pl_purchased_item_id integer,
+  pl_expiration_date timestamp,
+  pl_recipient_client_id integer,
+  pl_sale_date timestamp,
+  pl_sales_rep_id integer,
+  pl_sale_detail_id integer,
+  pl_total_amount numeric
+);
+CREATE TABLE visits (
+  pl_class_start_date_time timestamp,
+  pl_id integer,
+  pl_visit_id integer,
+  pl_class_name character varying,
+  pl_service_name character varying,
+  pl_class_id integer,
+  pl_dt_deleted date,
+  pl_dt_updated date,
+  pl_client_id character varying,
+  pl_site_id integer
+);"""
+        md_shuffled = shuffle_table_metadata(input_md_str, 0)
+        print(md_shuffled)
+        self.assertEqual(md_shuffled, expected_md_shuffled)
 
 class TestFunctions(unittest.TestCase):
     def test_is_date_or_time_str(self):
