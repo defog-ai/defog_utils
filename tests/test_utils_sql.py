@@ -124,23 +124,6 @@ class TestGetSqlFeatures(unittest.TestCase):
         self.assertTrue(features.distinct)
         self.assertFalse(features.agg_count_distinct)
 
-    def test_has_date(self):
-        sql = "SELECT column1 FROM table WHERE column2 = '2023-01-01'"
-        features = get_sql_features(sql, self.md_cols, self.md_tables)
-        self.assertTrue(features.has_date)
-        self.assertFalse(features.string_case_insensitive_match)
-        self.assertFalse(features.string_exact_match)
-        sql = "SELECT column1 FROM table WHERE column2 < '2023-01-01 12:34:56'"
-        features = get_sql_features(sql, self.md_cols, self.md_tables)
-        self.assertTrue(features.has_date)
-        self.assertFalse(features.string_case_insensitive_match)
-        self.assertFalse(features.string_exact_match)
-        sql = "SELECT column1 FROM table WHERE column2 >= '12:34:56'"
-        features = get_sql_features(sql, self.md_cols, self.md_tables)
-        self.assertTrue(features.has_date)
-        self.assertFalse(features.string_case_insensitive_match)
-        self.assertFalse(features.string_exact_match)
-
     def test_has_date_columns(self):
         # no date columns present
         sql = "SELECT column1 FROM table WHERE column2 = column3"
@@ -168,6 +151,24 @@ class TestGetSqlFeatures(unittest.TestCase):
         self.assertTrue(features.has_date)
         self.assertTrue(features.has_date_text)
         self.assertFalse(features.has_date_int)
+        self.assertTrue(features.date_literal)
+    
+    def test_date_literal(self):
+        sql = "SELECT column1 FROM table WHERE column2 = '2023-01-01'"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertTrue(features.date_literal)
+        self.assertFalse(features.string_case_insensitive_match)
+        self.assertFalse(features.string_exact_match)
+        sql = "SELECT column1 FROM table WHERE column2 < '2023-01-01 12:34:56'"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertTrue(features.date_literal)
+        self.assertFalse(features.string_case_insensitive_match)
+        self.assertFalse(features.string_exact_match)
+        sql = "SELECT column1 FROM table WHERE column2 >= '12:34:56'"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertTrue(features.date_literal)
+        self.assertFalse(features.string_case_insensitive_match)
+        self.assertFalse(features.string_exact_match)
 
     def test_date_trunc(self):
         sql = "SELECT DATE_TRUNC('day', column) FROM table"
@@ -192,6 +193,45 @@ class TestGetSqlFeatures(unittest.TestCase):
         sql = "SELECT DATE_PART('year', column) FROM table"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertTrue(features.date_part)
+
+    def test_date_comparison(self):
+        sql_left = "SELECT * FROM table WHERE column1 > '2023-01-01'"
+        sql_right = "SELECT * FROM table WHERE '2023-01-01' < column1"
+        extra_column_info = {
+            "date_type_date_time": {"column1"},
+            "date_type_int": set(),
+            "date_type_text": set(),
+        }
+        for sql in [sql_left, sql_right]:
+            features_with_empty_col_info = \
+                get_sql_features(sql, self.md_cols, self.md_tables, self.empty_extra_column_info)
+            self.assertFalse(features_with_empty_col_info.date_comparison)
+            features_with_date_col_info = \
+                get_sql_features(sql, self.md_cols, self.md_tables, extra_column_info)
+            self.assertTrue(features_with_date_col_info.date_comparison)
+
+    def test_date_sub_date(self):
+        sql = "SELECT column1 - column2 FROM table"
+        extra_column_info_both = {
+            "date_type_date_time": {"column1", "column2"},
+            "date_type_int": set(),
+            "date_type_text": set(),
+        }
+        extra_column_info_1 = {
+            "date_type_date_time": {"column1"},
+            "date_type_int": set(),
+            "date_type_text": set(),
+        }
+        extra_column_info_2 = {
+            "date_type_date_time": {"column2"},
+            "date_type_int": set(),
+            "date_type_text": set(),
+        }
+        features = get_sql_features(sql, self.md_cols, self.md_tables, extra_column_info_both)
+        self.assertTrue(features.date_sub_date)
+        for ec in [extra_column_info_1, extra_column_info_2, self.empty_extra_column_info]:
+            features = get_sql_features(sql, self.md_cols, self.md_tables, ec)
+            self.assertFalse(features.date_sub_date)
 
     def test_current_date_time(self):
         sql = "SELECT col_date - CURRENT_DATE FROM table"
@@ -475,7 +515,7 @@ WITH stock_stats AS (
 """
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         features_compact = features.compact()
-        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
@@ -493,7 +533,7 @@ WITH stock_stats AS (
             "sql_group_by": True,
             "sql_agg_min": True,
             "sql_agg_max": True,
-            "sql_has_date": True,
+            "sql_date_literal": True,
         }
         self.assertEqual(positive_features, expected_positive)
 
@@ -513,7 +553,7 @@ LEFT JOIN yearly_max_rpm ymr ON y.year = ymr.year ORDER BY y.year NULLS LAST;
             sql, {"year", "rpm", "manufacturer", "train_id"}, {"train"}
         )
         features_compact = features.compact()
-        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
+        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
@@ -1022,6 +1062,13 @@ class TestReplaceAlias(unittest.TestCase):
         expected = sql
         self.assertEqual(replace_alias(sql, new_alias_map), expected)
 
+    # def test_replace_with_subquery(self):
+    #     # failing case. uncomment if this is fixed
+    #     sql = "WITH user_count AS (SELECT COUNT(u.id) AS cnt FROM users u) SELECT u.cnt FROM user_count u"
+    #     new_alias_map = {"users": "us"}
+    #     expected = "WITH user_count AS (SELECT COUNT(us.id) AS cnt FROM users AS us) SELECT u.cnt FROM user_count AS u"
+    #     self.assertEqual(replace_alias(sql, new_alias_map), expected)
+
     def test_sql_1(self):
         sql = """WITH player_games AS (
   SELECT gm.gm_game_id AS game_id, pl.pl_player_id AS player_id, pl.pl_team_id AS team_id
@@ -1061,6 +1108,7 @@ RIGHT JOIN unique_games ug ON pg.game_id = ug.gm_game_id;"""
         result = replace_alias(sql, new_alias_map)
         print(result)
         self.assertEqual(result, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

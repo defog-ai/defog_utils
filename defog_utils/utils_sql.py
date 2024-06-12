@@ -77,8 +77,11 @@ class SqlFeatures(Features):
     has_date: bool = False
     has_date_text: bool = False
     has_date_int: bool = False
+    date_literal: bool = False
     date_trunc: bool = False
     date_part: bool = False
+    date_comparison: bool = False
+    date_sub_date: bool = False
     strftime: bool = False
     current_date_time: bool = False
     interval: bool = False
@@ -348,6 +351,15 @@ def get_sql_features(
             features.has_in = True
         elif isinstance(node, exp.Add) or isinstance(node, exp.Sub):
             features.additive = True
+            if isinstance(node, exp.Sub):
+                date_cols_in_sub = 0
+                for sub_node in node.flatten():
+                    if isinstance(sub_node, exp.Column):
+                        column_name_lower = sub_node.name.lower()
+                        if date_cols and column_name_lower in date_cols:
+                            date_cols_in_sub += 1
+                if date_cols_in_sub >= 2:
+                    features.date_sub_date = True
         elif isinstance(node, exp.Div):
             features.ratio = True
         elif isinstance(node, exp.Round):
@@ -415,22 +427,23 @@ def get_sql_features(
         elif type(node) in comparison_expressions:
             has_string = False
             has_upper_lower = False
-            has_date = False
             for child in node.flatten():
                 if isinstance(child, exp.Literal) and child.is_string:
                     if is_date_or_time_str(child.name):
-                        has_date = True
+                        features.date_literal = True
                     else:
                         has_string = True
                 elif isinstance(child, exp.Upper) or isinstance(child, exp.Lower):
                     has_upper_lower = True
+                elif isinstance(child, exp.Column):
+                    column_name_lower = child.name.lower()
+                    if date_cols and column_name_lower in date_cols:
+                        features.date_comparison = True
             if has_string:
                 if has_upper_lower:
                     features.string_case_insensitive_match = True
                 else:
                     features.string_exact_match = True
-            if has_date:
-                features.has_date = True
         elif isinstance(node, exp.Like):
             features.string_like_match = True
         elif isinstance(node, exp.ILike):
