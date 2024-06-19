@@ -57,6 +57,16 @@ class TestGetSqlFeatures(unittest.TestCase):
         sql = "SELECT * FROM table1 t1 JOIN table2 t2 ON t1.id = t2.id"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertFalse(features.join_left)
+    
+    def test_addition(self):
+        sql = "SELECT column1 + column2 FROM table"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertTrue(features.addition)
+
+    def test_subtraction(self):
+        sql = "SELECT column1 - column2 FROM table"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertTrue(features.subtraction)
 
     def test_cte(self):
         sql = "WITH cte1 AS (SELECT * FROM table), cte2 AS (SELECT * FROM cte1), cte3 AS (SELECT * FROM cte2 JOIN cte1 ON cte1.id = cte2.id) SELECT * FROM cte3"
@@ -227,11 +237,19 @@ class TestGetSqlFeatures(unittest.TestCase):
             "date_type_int": set(),
             "date_type_text": set(),
         }
+        # date - date
         features = get_sql_features(sql, self.md_cols, self.md_tables, extra_column_info_both)
         self.assertTrue(features.date_sub_date)
-        for ec in [extra_column_info_1, extra_column_info_2, self.empty_extra_column_info]:
+        self.assertFalse(features.date_sub)
+        # x - date or date - x
+        for ec in [extra_column_info_1, extra_column_info_2]:
             features = get_sql_features(sql, self.md_cols, self.md_tables, ec)
             self.assertFalse(features.date_sub_date)
+            self.assertTrue(features.date_sub)
+        # x - x
+        features = get_sql_features(sql, self.md_cols, self.md_tables, self.empty_extra_column_info)
+        self.assertFalse(features.date_sub_date)
+        self.assertFalse(features.date_sub)
 
     def test_current_date_time(self):
         sql = "SELECT col_date - CURRENT_DATE FROM table"
@@ -515,7 +533,7 @@ WITH stock_stats AS (
 """
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         features_compact = features.compact()
-        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
@@ -527,7 +545,7 @@ WITH stock_stats AS (
             "sql_has_null": True,
             "sql_distinct": True,
             "sql_cte": 1,
-            "sql_additive": True,
+            "sql_subtraction": True,
             "sql_order_by": True,
             "sql_limit": True,
             "sql_group_by": True,
@@ -553,7 +571,7 @@ LEFT JOIN yearly_max_rpm ymr ON y.year = ymr.year ORDER BY y.year NULLS LAST;
             sql, {"year", "rpm", "manufacturer", "train_id"}, {"train"}
         )
         features_compact = features.compact()
-        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
+        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
@@ -865,6 +883,117 @@ class TestSchemaFeatures(unittest.TestCase):
             "schema_has_date_int": True,
             "schema_has_schema": True,
             "schema_has_catalog": True,
+        }
+        self.assertEqual(positive_features, expected_positive)
+
+    def test_schema_2(self):
+        schema = """CREATE TABLE biz_arts.visits (
+  visit_id integer,
+  class_id integer,
+  class_start_date_time timestamp,
+  id integer,
+  client_id character varying,
+  class_name character varying,
+  service_name character varying,
+  location_id integer
+);
+CREATE TABLE biz_arts.studio_sites (
+  dashboard boolean,
+  utc_start_time_booking_management smallint,
+  trello_api_key character varying,
+  number_of_forgivables integer,
+  studio_label character varying,
+  location_id integer,
+  performance_report boolean,
+  studio_utc_offset smallint,
+  report_email character varying,
+  booking_management boolean,
+  timezone character varying,
+  late_cancellation_charge boolean,
+  utc_start_time_dashboard smallint,
+  mindbody_token character varying,
+  last_forgivable timestamp,
+  late_cancel_product_id integer,
+  country character varying,
+  city character varying,
+  welcome_text character varying,
+  trello_token character varying,
+  logo_url text,
+  state_province character varying,
+  performance_report_email character varying,
+  utc_start_time_late_cancel smallint,
+  studio_type character varying,
+  region character varying,
+  late_cancellation_report boolean,
+  no_show_product_id integer
+);
+CREATE TABLE biz_arts.clients (
+  location_id integer,
+  photo_url text,
+  phone_number character varying,
+  last_name character varying,
+  id integer,
+  referred_by character varying,
+  client_id character varying,
+  creation_date timestamp,
+  email character varying,
+  notes text,
+  first_name character varying,
+  last_modified_date_time timestamp,
+  forgiveables_remaining integer,
+  unique_id integer,
+  red_alert text,
+  cc_type character varying,
+  active boolean,
+  visits_at_site integer,
+  status character varying
+);
+CREATE TABLE biz_arts.transactions (
+  expiration_date timestamp,
+  transaction_code integer,
+  location_id integer,
+  contract_id integer,
+  sale_date timestamp,
+  product_id integer,
+  unit_price numeric,
+  active_date timestamp
+);"""
+        features, extra_column_info = get_schema_features(schema)
+        print(features.positive_features())
+        expected_column_info = {
+            "date_type_date_time": {
+                "active_date",
+                "class_start_date_time",
+                "creation_date",
+                "expiration_date",
+                "last_forgivable",
+                "last_modified_date_time",
+                "sale_date",
+            },
+            "date_type_int": set(),
+            "date_type_text": set(),
+        }
+        self.assertEqual(extra_column_info, expected_column_info)
+        self.assertEqual(features.num_tables, 4)
+        self.assertEqual(features.num_columns, 63)
+        self.assertEqual(features.num_comments, 0)
+        self.assertTrue(features.has_date)
+        self.assertFalse(features.has_date_int)
+        self.assertFalse(features.has_date_text)
+        self.assertTrue(features.has_schema)
+        self.assertFalse(features.has_catalog)
+        self.assertFalse(features.quoted_table_names)
+        self.assertFalse(features.quoted_column_names)
+        self.assertFalse(features.invalid_ddl)
+        features_compact = features.compact()
+        expected_compact = "4,63,0,1,0,0,1,0,0,0,0,0"
+        self.assertEqual(features_compact, expected_compact)
+        positive_features = features.positive_features()
+        expected_positive = {
+            "schema_num_tables": 4,
+            "schema_num_columns": 63,
+            "schema_has_date": True,
+            "schema_has_schema": True,
         }
         self.assertEqual(positive_features, expected_positive)
 
