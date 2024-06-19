@@ -154,6 +154,7 @@ def get_schema_features(
     features = SchemaFeatures()
     # preprocess the schema to avoid a few edge cases. these are inconsequential
     # for the purposes of feature extraction
+    schema_raw = re.sub("`", "", schema_raw)
     schema_raw = re.sub("```", "", schema_raw)
     split_ddl = schema_raw.split("Here is a list of joinable columns", 1)
     if len(split_ddl) >= 2 and split_ddl[1].strip():
