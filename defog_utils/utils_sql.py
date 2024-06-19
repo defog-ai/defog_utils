@@ -72,6 +72,7 @@ class SqlFeatures(Features):
     agg_max: bool = False
     agg_var: bool = False
     agg_percentile: bool = False
+    nested_agg: bool = False
     window_over: bool = False
     lag: bool = False
     rank: bool = False
@@ -308,6 +309,7 @@ def get_sql_features(
     # internal state for computing various summarized/derived quantities
     columns_in_sql = set()
     tables_in_sql = set()
+    agg_depths = set()
     # get respective sets from extra_column_info for easier reference below
     if extra_column_info is None:
         date_cols, date_int_cols, date_text_cols = set(), set(), set()
@@ -382,24 +384,31 @@ def get_sql_features(
             features.having = True
         elif isinstance(node, exp.Count):
             features.agg_count = True
+            agg_depths.add(node.depth)
             for child in node.flatten():
                 if isinstance(child, exp.Distinct):
                     features.agg_count_distinct = True
                     break
         elif isinstance(node, exp.Sum):
             features.agg_sum = True
+            agg_depths.add(node.depth)
         elif isinstance(node, exp.Avg):
             features.agg_avg = True
+            agg_depths.add(node.depth)
         elif isinstance(node, exp.Min):
             features.agg_min = True
+            agg_depths.add(node.depth)
         elif isinstance(node, exp.Max):
             features.agg_max = True
+            agg_depths.add(node.depth)
         elif type(node) in variance_expressions:
             features.agg_var = True
+            agg_depths.add(node.depth)
         elif isinstance(node, exp.PercentileCont) or isinstance(
             node, exp.PercentileDisc
         ):
             features.agg_percentile = True
+            agg_depths.add(node.depth)
         elif isinstance(node, exp.Window):
             features.window_over = True
         elif isinstance(node, exp.Lag):
@@ -490,6 +499,8 @@ def get_sql_features(
         tables_in_sql = tables_in_sql.intersection(md_tables)
     features.num_columns = len(columns_in_sql)
     features.num_tables = len(tables_in_sql)
+    if len(agg_depths) > 1:
+        features.nested_agg = True
     return features
 
 
