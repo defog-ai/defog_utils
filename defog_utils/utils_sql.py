@@ -364,6 +364,8 @@ def get_sql_features(
                     column_name_lower = sub_node.name.lower()
                     if date_cols and column_name_lower in date_cols:
                         date_cols_in_sub += 1
+                elif "JULIANDAY" in str(sub_node).upper():
+                    date_cols_in_sub += 1
             if date_cols_in_sub == 1:
                 features.date_sub = True
             elif date_cols_in_sub >= 2:
@@ -406,6 +408,10 @@ def get_sql_features(
             features.lag = True
         elif isinstance(node, exp.RowNumber):
             features.rank = True
+        elif isinstance(node, exp.DateDiff) or isinstance(node, exp.DatetimeDiff):
+            features.date_sub_date = True
+        elif isinstance(node, exp.DateSub) or isinstance(node, exp.DatetimeSub):
+            features.date_sub = True
         elif isinstance(node, exp.DateTrunc) or isinstance(node, exp.TimestampTrunc):
             features.date_trunc = True
         elif isinstance(node, exp.StrToTime):
