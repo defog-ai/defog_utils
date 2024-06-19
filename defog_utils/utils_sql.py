@@ -56,7 +56,8 @@ class SqlFeatures(Features):
     union: bool = False
     case_condition: bool = False
     has_in: bool = False
-    additive: bool = False
+    addition: bool = False
+    subtraction: bool = False
     ratio: bool = False
     round: bool = False
     order_by: bool = False
@@ -81,7 +82,8 @@ class SqlFeatures(Features):
     date_trunc: bool = False
     date_part: bool = False
     date_comparison: bool = False
-    date_sub_date: bool = False
+    date_sub: bool = False  # date - x or x - date
+    date_sub_date: bool = False  # date - date
     strftime: bool = False
     current_date_time: bool = False
     interval: bool = False
@@ -138,7 +140,9 @@ deviant_columns_file = "deviant_columns.txt"
 matched_columns_file = "matched_columns.txt"
 
 
-def get_schema_features(schema_raw: str) -> Tuple[SchemaFeatures, Dict[str, str]]:
+def get_schema_features(
+    schema_raw: str, dialect: str = "postgres"
+) -> Tuple[SchemaFeatures, Dict[str, str]]:
     """
     Extracts features from a SQL DDL string describing the schema by making a single
       pass through the parsed SQL abstract syntax tree (AST).
@@ -166,7 +170,7 @@ def get_schema_features(schema_raw: str) -> Tuple[SchemaFeatures, Dict[str, str]
     # is a separate root in the AST. `create` contains the root node for each
     # CREATE TABLE statement.
     try:
-        parsed_ddl = parse(schema_processed)
+        parsed_ddl = parse(schema_processed, dialect)
         for create in parsed_ddl:
             schema = create.this
             table = schema.this
@@ -349,17 +353,20 @@ def get_sql_features(
             features.case_condition = True
         elif isinstance(node, exp.In):
             features.has_in = True
-        elif isinstance(node, exp.Add) or isinstance(node, exp.Sub):
-            features.additive = True
-            if isinstance(node, exp.Sub):
-                date_cols_in_sub = 0
-                for sub_node in node.flatten():
-                    if isinstance(sub_node, exp.Column):
-                        column_name_lower = sub_node.name.lower()
-                        if date_cols and column_name_lower in date_cols:
-                            date_cols_in_sub += 1
-                if date_cols_in_sub >= 2:
-                    features.date_sub_date = True
+        elif isinstance(node, exp.Add):
+            features.addition = True
+        elif isinstance(node, exp.Sub):
+            features.subtraction = True
+            date_cols_in_sub = 0
+            for sub_node in node.flatten():
+                if isinstance(sub_node, exp.Column):
+                    column_name_lower = sub_node.name.lower()
+                    if date_cols and column_name_lower in date_cols:
+                        date_cols_in_sub += 1
+            if date_cols_in_sub == 1:
+                features.date_sub = True
+            elif date_cols_in_sub >= 2:
+                features.date_sub_date = True
         elif isinstance(node, exp.Div):
             features.ratio = True
         elif isinstance(node, exp.Round):
@@ -639,7 +646,7 @@ def shuffle_table_metadata(md_str: str, seed: Optional[int] = None) -> str:
             schema_line = schema_match.group(0)
             schema_str_list.append(schema_line)
             md_str = md_str.replace(schema_line, "")
-        
+
     md_table_list = md_str.split(");")
     md_table_shuffled_list = []
     for md_table in md_table_list:
@@ -671,7 +678,9 @@ def shuffle_table_metadata(md_str: str, seed: Optional[int] = None) -> str:
             "\nHere is a list of joinable columns:\n" + join_statements
         )
     if schema_str_list != []:
-        md_table_shuffled_str = "\n".join(schema_str_list) + "\n" + md_table_shuffled_str
+        md_table_shuffled_str = (
+            "\n".join(schema_str_list) + "\n" + md_table_shuffled_str
+        )
     return md_table_shuffled_str
 
 
@@ -679,7 +688,7 @@ def replace_alias(
     sql: str, new_alias_map: Dict[str, str], dialect: str = "postgres"
 ) -> str:
     """
-    Replaces the table aliases in the SQL query with the new aliases provided in 
+    Replaces the table aliases in the SQL query with the new aliases provided in
     the new_alias_map.
     `new_alias_map` is a dict of table_name -> new_alias.
     Note that aliases are always in lowercase, and will be converted to lowercase
