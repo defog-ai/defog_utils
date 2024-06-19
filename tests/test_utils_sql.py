@@ -105,6 +105,14 @@ class TestGetSqlFeatures(unittest.TestCase):
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertFalse(features.agg_min)
         self.assertTrue(features.agg_max)
+    
+    def test_nested_agg(self):
+        sql = "SELECT COUNT(col), MIN(col), SUM(col2-col3) FROM table"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertFalse(features.nested_agg)
+        sql = "WITH t1 AS (SELECT id, SUM(column) AS s FROM table GROUP BY id) SELECT AVG(s) FROM t1"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertTrue(features.nested_agg)
 
     def test_window_over(self):
         sql = "SELECT COUNT(*) OVER () FROM table"
@@ -533,7 +541,8 @@ WITH stock_stats AS (
 """
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         features_compact = features.compact()
-        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+        print(features_compact)
+        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
@@ -571,7 +580,8 @@ LEFT JOIN yearly_max_rpm ymr ON y.year = ymr.year ORDER BY y.year NULLS LAST;
             sql, {"year", "rpm", "manufacturer", "train_id"}, {"train"}
         )
         features_compact = features.compact()
-        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
+        print(features_compact)
+        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
@@ -585,6 +595,7 @@ LEFT JOIN yearly_max_rpm ymr ON y.year = ymr.year ORDER BY y.year NULLS LAST;
             "sql_group_by": True,
             "sql_agg_min": True,
             "sql_agg_max": True,
+            "sql_nested_agg": True,
             "sql_generate_timeseries": True,
             "sql_string_exact_match": True,
         }
