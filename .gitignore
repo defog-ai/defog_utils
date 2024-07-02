@@ -15,3 +15,5 @@ __pycache__/
 # Project generated files
 deviant_columns.txt
 matched_columns.txt
+
+build/
