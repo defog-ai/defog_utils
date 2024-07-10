@@ -577,7 +577,9 @@ def generate_aliases_dict(
         if "_" in table_name:
             # get the first letter of each subword delimited by "_"
             table_name = table_name.strip("_")
-            alias = "".join([word[0] for word in table_name.split("_")]).lower()
+            # use re to split on one or more underscores
+            words = re.split(r"_+", table_name)
+            alias = "".join(word[0] for word in words).lower()
         else:
             # if camelCase, get the first letter of each subword
             # otherwise defaults to just getting the 1st letter of the table_name

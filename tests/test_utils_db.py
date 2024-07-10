@@ -624,10 +624,10 @@ class TestGenerateAliases(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
     def test_generate_aliases_with_dots_and_underscores(self):
-        table_names = ["db.schema.table1", "db.schema.table2", "db.schema.table3", "_uncompressed"]
+        table_names = ["db.schema.table1", "db.schema.table2", "db.schema.table3", "_uncompressed___long_name_"]
         result = generate_aliases(table_names)
         print(result)
-        expected_result = "-- db.schema.table1 AS t1\n-- db.schema.table2 AS t2\n-- db.schema.table3 AS t3\n-- _uncompressed AS u\n"
+        expected_result = "-- db.schema.table1 AS t1\n-- db.schema.table2 AS t2\n-- db.schema.table3 AS t3\n-- _uncompressed___long_name_ AS uln\n"
         self.assertEqual(result, expected_result)
 
 
