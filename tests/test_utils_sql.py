@@ -124,6 +124,17 @@ class TestGetSqlFeatures(unittest.TestCase):
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertTrue(features.case_condition)
 
+    def test_month_name_case_in(self):
+        sql = "SELECT * FROM table WHERE month_col IN ('January', 'February', 'Mar', 'Apr')"
+        sql2 = "SELECT * FROM table WHERE month_col = 'January'"
+        sql3 = "SELECT * FROM review r WHERE DATE(CAST(r.year AS TEXT) || '-' || CASE r.month WHEN 'January' THEN '01' WHEN 'February' THEN '02' WHEN 'March' THEN '03' WHEN 'April' THEN '04' WHEN 'May' THEN '05' WHEN 'June' THEN '06' WHEN 'July' THEN '07' WHEN 'August' THEN '08' WHEN 'September' THEN '09' WHEN 'October' THEN '10' WHEN 'November' THEN '11' WHEN 'December' THEN '12' END || '-01') >= DATE('now', '-12 months');"
+        features = get_sql_features(sql, self.md_cols, self.md_tables)
+        features2 = get_sql_features(sql2, self.md_cols, self.md_tables)
+        features3 = get_sql_features(sql3, self.md_cols, self.md_tables)
+        self.assertTrue(features.month_name_case_in)
+        self.assertFalse(features2.month_name_case_in)
+        self.assertTrue(features3.month_name_case_in)
+
     def test_ratio(self):
         sql = "SELECT column1 / column2 FROM table"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
