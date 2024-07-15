@@ -56,6 +56,7 @@ class SqlFeatures(Features):
     union: bool = False
     case_condition: bool = False
     has_in: bool = False
+    month_name_case_in: bool = False
     addition: bool = False
     subtraction: bool = False
     ratio: bool = False
@@ -106,6 +107,7 @@ date_pattern = r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])"
 time_pattern = r"^(0\d|1\d|2[0-3]):([0-5]\d):([0-5]\d)"
 date_or_time_pattern = f"({date_pattern}|{time_pattern})"
 date_column_pattern = r"(date|timestamp)(\s|$)"
+month_name_pattern = r"('Jan'|'Feb'|'Mar'|'Apr'|'May'|'Jun'|'Jul'|'Aug'|'Sep'|'Oct'|'Nov'|'Dec'|'January'|'February'|'March'|'April'|'May'|'June'|'July'|'August'|'September'|'October'|'November'|'December')"
 variance_expressions = [
     exp.VariancePop,
     exp.Variance,
@@ -354,8 +356,12 @@ def get_sql_features(
             features.union = True
         elif isinstance(node, exp.Case):
             features.case_condition = True
+            if has_month_name(str(node)):
+                features.month_name_case_in = True
         elif isinstance(node, exp.In):
             features.has_in = True
+            if has_month_name(str(node)):
+                features.month_name_case_in = True
         elif isinstance(node, exp.Add):
             features.addition = True
         elif isinstance(node, exp.Sub):
@@ -514,6 +520,8 @@ def is_date_or_time_str(s: str) -> bool:
     m = re.match(date_or_time_pattern, s)
     return bool(m)
 
+def has_month_name(s: str) -> bool:
+    return bool(re.search(month_name_pattern, s, re.IGNORECASE))
 
 def has_date_in_name(s: str) -> bool:
     return bool(re.search(r"(year|quarter|month|week|day)", s))
@@ -605,6 +613,11 @@ def fix_comma(cols: List[str]) -> List[str]:
             if not re.search(r",\s*--", col):
                 # use re.sub to replace (any whitespace)-- with , --
                 col = re.sub(r"\s*--", ", --", col)
+        elif "/*" in col:
+            # check if comma is just before comment
+            if not re.search(r",\s*/\*", col):
+                # use re.sub to replace (any whitespace)-- with , --
+                col = re.sub(r"\s*/\*", ", /*", col)
         # check if string ends with comma (optionally with additional spaces)
         elif not re.search(r",\s*$", col):
             # end with comma if not present
@@ -614,7 +627,6 @@ def fix_comma(cols: List[str]) -> List[str]:
     last_col = fixed_cols[-1]
     if "--" in last_col:
         # check if comma is after a word/closing brace, followed by spaces before -- and remove if present
-
         pre_comment, after_comment = last_col.split("--", 1)
         # check if pre_comment ends with a comma with optional spaces
         if re.search(r",\s*$", pre_comment):
@@ -622,6 +634,15 @@ def fix_comma(cols: List[str]) -> List[str]:
             # remove any trailing spaces in pre_comment
             pre_comment = pre_comment.rstrip()
             last_col = pre_comment + " --" + after_comment
+    elif "/*" in last_col:
+        # check if comma is after a word/closing brace, followed by spaces before -- and remove if present
+        pre_comment, after_comment = last_col.split("/*", 1)
+        # check if pre_comment ends with a comma with optional spaces
+        if re.search(r",\s*$", pre_comment):
+            pre_comment = re.sub(r",\s*$", "", pre_comment)
+            # remove any trailing spaces in pre_comment
+            pre_comment = pre_comment.rstrip()
+            last_col = pre_comment + " /*" + after_comment
     # if last_col ends with a comma with optional spaces, remove it
     elif re.search(r",\s*$", last_col):
         last_col = re.sub(r",\s*$", "", last_col)
