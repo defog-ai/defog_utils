@@ -542,7 +542,7 @@ WITH stock_stats AS (
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         features_compact = features.compact()
         print(features_compact)
-        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
@@ -581,7 +581,7 @@ LEFT JOIN yearly_max_rpm ymr ON y.year = ymr.year ORDER BY y.year NULLS LAST;
         )
         features_compact = features.compact()
         print(features_compact)
-        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
+        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
