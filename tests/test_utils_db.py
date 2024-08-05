@@ -51,6 +51,77 @@ class TestMkCreateTableDDL(unittest.TestCase):
             ");\n"
         )
         self.assertEqual(mk_create_table_ddl(table_name, columns), expected_output)
+    
+    def test_mk_create_table_ddl_spaces(self):
+        table_name = "table1"
+        columns = [
+            {
+                "data_type": "text",
+                "column_name": "Invoice Number",
+                "column_description": "Unique identifier for each invoice"
+            },
+            {
+                "data_type": "text",
+                "column_name": "Invoice Date",
+                "column_description": "Date when the invoice was issued"
+            },
+            {
+                "data_type": "text",
+                "column_name": "Sales Order#",
+                "column_description": "Sales order number associated with the invoice"
+            },
+            {
+                "data_type": "text",
+                "column_name": "Customer Name",
+                "column_description": "Name of the customer who made the purchase"
+            },
+            {
+                "data_type": "int",
+                "column_name": "Total with out GST",
+                "column_description": "Total amount of the invoice without including GST"
+            },
+            {
+                "data_type": "int",
+                "column_name": "Total",
+                "column_description": "Total amount of the invoice including GST"
+            },
+            {
+                "data_type": "text",
+                "column_name": "Status",
+                "column_description": "Current status of the invoice"
+            },
+            {
+                "data_type": "text",
+                "column_name": "Salesperson Name",
+                "column_description": "Name of the salesperson who handled the sale"
+            },
+            {
+                "data_type": "text",
+                "column_name": "Account Type",
+                "column_description": "Type of account associated with the invoice"
+            },
+            {
+                "data_type": "text",
+                "column_name": "Item Category",
+                "column_description": "Category of the item purchased"
+            }
+        ]
+        expected_output = (
+            "CREATE TABLE table1 (\n"
+            "  \"Invoice Number\" text, --Unique identifier for each invoice\n"
+            "  \"Invoice Date\" text, --Date when the invoice was issued\n"
+            "  \"Sales Order#\" text, --Sales order number associated with the invoice\n"
+            "  \"Customer Name\" text, --Name of the customer who made the purchase\n"
+            "  \"Total with out GST\" integer, --Total amount of the invoice without including GST\n"
+            "  Total integer, --Total amount of the invoice including GST\n"
+            "  Status text, --Current status of the invoice\n"
+            "  \"Salesperson Name\" text, --Name of the salesperson who handled the sale\n"
+            "  \"Account Type\" text, --Type of account associated with the invoice\n"
+            "  \"Item Category\" text --Category of the item purchased\n"
+            ");\n"
+        )
+        self.assertEqual(mk_create_table_ddl(table_name, columns), expected_output)
+
 
 
 class TestMkCreateDDL(unittest.TestCase):
