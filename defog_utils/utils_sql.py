@@ -429,6 +429,8 @@ def get_sql_features(
             features.date_sub = True
         elif isinstance(node, exp.DateTrunc) or isinstance(node, exp.TimestampTrunc):
             features.date_trunc = True
+        elif isinstance(node, exp.StrToDate):
+            features.date_time_type_conversion = True
         elif isinstance(node, exp.StrToTime):
             features.date_time_type_conversion = True
         elif isinstance(node, exp.Extract):
