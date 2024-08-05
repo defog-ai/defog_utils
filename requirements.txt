@@ -1,4 +1,5 @@
 numpy
-psycopg2-binary
-sqlglotrs>=0.2.8
-sqlparse
+psycopg2-binary==2.9.9
+sqlglot==25.8.1
+sqlglotrs==0.2.8
+sqlparse==0.5.1
