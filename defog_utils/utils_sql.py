@@ -520,8 +520,10 @@ def is_date_or_time_str(s: str) -> bool:
     m = re.match(date_or_time_pattern, s)
     return bool(m)
 
+
 def has_month_name(s: str) -> bool:
     return bool(re.search(month_name_pattern, s, re.IGNORECASE))
+
 
 def has_date_in_name(s: str) -> bool:
     return bool(re.search(r"(year|quarter|month|week|day)", s))
