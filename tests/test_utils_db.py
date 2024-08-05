@@ -51,77 +51,76 @@ class TestMkCreateTableDDL(unittest.TestCase):
             ");\n"
         )
         self.assertEqual(mk_create_table_ddl(table_name, columns), expected_output)
-    
+
     def test_mk_create_table_ddl_spaces(self):
         table_name = "table1"
         columns = [
             {
                 "data_type": "text",
                 "column_name": "Invoice Number",
-                "column_description": "Unique identifier for each invoice"
+                "column_description": "Unique identifier for each invoice",
             },
             {
                 "data_type": "text",
                 "column_name": "Invoice Date",
-                "column_description": "Date when the invoice was issued"
+                "column_description": "Date when the invoice was issued",
             },
             {
                 "data_type": "text",
                 "column_name": "Sales Order#",
-                "column_description": "Sales order number associated with the invoice"
+                "column_description": "Sales order number associated with the invoice",
             },
             {
                 "data_type": "text",
                 "column_name": "Customer Name",
-                "column_description": "Name of the customer who made the purchase"
+                "column_description": "Name of the customer who made the purchase",
             },
             {
                 "data_type": "int",
                 "column_name": "Total with out GST",
-                "column_description": "Total amount of the invoice without including GST"
+                "column_description": "Total amount of the invoice without including GST",
             },
             {
                 "data_type": "int",
                 "column_name": "Total",
-                "column_description": "Total amount of the invoice including GST"
+                "column_description": "Total amount of the invoice including GST",
             },
             {
                 "data_type": "text",
                 "column_name": "Status",
-                "column_description": "Current status of the invoice"
+                "column_description": "Current status of the invoice",
             },
             {
                 "data_type": "text",
                 "column_name": "Salesperson Name",
-                "column_description": "Name of the salesperson who handled the sale"
+                "column_description": "Name of the salesperson who handled the sale",
             },
             {
                 "data_type": "text",
                 "column_name": "Account Type",
-                "column_description": "Type of account associated with the invoice"
+                "column_description": "Type of account associated with the invoice",
             },
             {
                 "data_type": "text",
                 "column_name": "Item Category",
-                "column_description": "Category of the item purchased"
-            }
+                "column_description": "Category of the item purchased",
+            },
         ]
         expected_output = (
             "CREATE TABLE table1 (\n"
-            "  \"Invoice Number\" text, --Unique identifier for each invoice\n"
-            "  \"Invoice Date\" text, --Date when the invoice was issued\n"
-            "  \"Sales Order#\" text, --Sales order number associated with the invoice\n"
-            "  \"Customer Name\" text, --Name of the customer who made the purchase\n"
-            "  \"Total with out GST\" integer, --Total amount of the invoice without including GST\n"
+            '  "Invoice Number" text, --Unique identifier for each invoice\n'
+            '  "Invoice Date" text, --Date when the invoice was issued\n'
+            '  "Sales Order#" text, --Sales order number associated with the invoice\n'
+            '  "Customer Name" text, --Name of the customer who made the purchase\n'
+            '  "Total with out GST" integer, --Total amount of the invoice without including GST\n'
             "  Total integer, --Total amount of the invoice including GST\n"
             "  Status text, --Current status of the invoice\n"
-            "  \"Salesperson Name\" text, --Name of the salesperson who handled the sale\n"
-            "  \"Account Type\" text, --Type of account associated with the invoice\n"
-            "  \"Item Category\" text --Category of the item purchased\n"
+            '  "Salesperson Name" text, --Name of the salesperson who handled the sale\n'
+            '  "Account Type" text, --Type of account associated with the invoice\n'
+            '  "Item Category" text --Category of the item purchased\n'
             ");\n"
         )
         self.assertEqual(mk_create_table_ddl(table_name, columns), expected_output)
-
 
 
 class TestMkCreateDDL(unittest.TestCase):
@@ -469,24 +468,64 @@ CREATE TABLE acct_perf (
 );"""
         expected = {
             "acct_trx": [
-                {"column_name": "trx_units", "data_type": "numeric(10,2)", "column_description": ""},
-                {"column_name": "asset_id", "data_type": "integer", "column_description": ""},
-                {"column_name": "trx_amount", "data_type": "numeric(10,2)", "column_description": ""},
-                {"column_name": "details", "data_type": "varchar(500)", "column_description": ""},
-                {"column_name": "id", "data_type": "integer", "column_description": "Primary key for acct_trx table, joinable with other tables"},
-                {"column_name": "settle_date", "data_type": "date", "column_description": "Date transaction settled"},
-                {"column_name": "symbol", "data_type": "varchar(10)", "column_description": ""},
+                {
+                    "column_name": "trx_units",
+                    "data_type": "numeric(10,2)",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "asset_id",
+                    "data_type": "integer",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "trx_amount",
+                    "data_type": "numeric(10,2)",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "details",
+                    "data_type": "varchar(500)",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "id",
+                    "data_type": "integer",
+                    "column_description": "Primary key for acct_trx table, joinable with other tables",
+                },
+                {
+                    "column_name": "settle_date",
+                    "data_type": "date",
+                    "column_description": "Date transaction settled",
+                },
+                {
+                    "column_name": "symbol",
+                    "data_type": "varchar(10)",
+                    "column_description": "",
+                },
             ],
             "acct_perf": [
-                {"column_name": "ytd_return", "data_type": "numeric(5,2)", "column_description": ""},
-                {"column_name": "acct_snapshot_date", "data_type": "text", "column_description": "format: yyyy-mm-dd"},
-                {"column_name": "account_id", "data_type": "integer", "column_description": "Primary key, foreign key to cust_acct table"},
+                {
+                    "column_name": "ytd_return",
+                    "data_type": "numeric(5,2)",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "acct_snapshot_date",
+                    "data_type": "text",
+                    "column_description": "format: yyyy-mm-dd",
+                },
+                {
+                    "column_name": "account_id",
+                    "data_type": "integer",
+                    "column_description": "Primary key, foreign key to cust_acct table",
+                },
             ],
         }
         md = parse_md(md_str)
         print(md)
         self.assertDictEqual(md, expected)
-    
+
     def test_parse_md_3(self):
         md_str = """CREATE TABLE acct_trx (
   trx_units numeric(10, 2),
@@ -504,18 +543,58 @@ CREATE TABLE acct_perf (
 );"""
         expected = {
             "acct_trx": [
-                {"column_name": "trx_units", "data_type": "numeric(10, 2)", "column_description": ""},
-                {"column_name": "asset_id", "data_type": "integer", "column_description": ""},
-                {"column_name": "trx_amount", "data_type": "numeric(10, 2)", "column_description": ""},
-                {"column_name": "details", "data_type": "varchar(500)", "column_description": ""},
-                {"column_name": "id", "data_type": "integer", "column_description": "Primary key for acct_trx table, joinable with other tables"},
-                {"column_name": "settle_date", "data_type": "date", "column_description": "Date transaction settled"},
-                {"column_name": "symbol", "data_type": "varchar(10)", "column_description": ""},
+                {
+                    "column_name": "trx_units",
+                    "data_type": "numeric(10, 2)",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "asset_id",
+                    "data_type": "integer",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "trx_amount",
+                    "data_type": "numeric(10, 2)",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "details",
+                    "data_type": "varchar(500)",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "id",
+                    "data_type": "integer",
+                    "column_description": "Primary key for acct_trx table, joinable with other tables",
+                },
+                {
+                    "column_name": "settle_date",
+                    "data_type": "date",
+                    "column_description": "Date transaction settled",
+                },
+                {
+                    "column_name": "symbol",
+                    "data_type": "varchar(10)",
+                    "column_description": "",
+                },
             ],
             "acct_perf": [
-                {"column_name": "ytd_return", "data_type": "numeric(5, 2)", "column_description": ""},
-                {"column_name": "acct_snapshot_date", "data_type": "text", "column_description": "format: yyyy-mm-dd"},
-                {"column_name": "account_id", "data_type": "integer", "column_description": "Primary key, foreign key to cust_acct table"},
+                {
+                    "column_name": "ytd_return",
+                    "data_type": "numeric(5, 2)",
+                    "column_description": "",
+                },
+                {
+                    "column_name": "acct_snapshot_date",
+                    "data_type": "text",
+                    "column_description": "format: yyyy-mm-dd",
+                },
+                {
+                    "column_name": "account_id",
+                    "data_type": "integer",
+                    "column_description": "Primary key, foreign key to cust_acct table",
+                },
             ],
         }
         md = parse_md(md_str)
@@ -695,7 +774,12 @@ class TestGenerateAliases(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
     def test_generate_aliases_with_dots_and_underscores(self):
-        table_names = ["db.schema.table1", "db.schema.table2", "db.schema.table3", "_uncompressed___long_name_"]
+        table_names = [
+            "db.schema.table1",
+            "db.schema.table2",
+            "db.schema.table3",
+            "_uncompressed___long_name_",
+        ]
         result = generate_aliases(table_names)
         print(result)
         expected_result = "-- db.schema.table1 AS t1\n-- db.schema.table2 AS t2\n-- db.schema.table3 AS t3\n-- _uncompressed___long_name_ AS uln\n"

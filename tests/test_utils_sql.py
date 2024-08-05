@@ -57,7 +57,7 @@ class TestGetSqlFeatures(unittest.TestCase):
         sql = "SELECT * FROM table1 t1 JOIN table2 t2 ON t1.id = t2.id"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertFalse(features.join_left)
-    
+
     def test_addition(self):
         sql = "SELECT column1 + column2 FROM table"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
@@ -105,7 +105,7 @@ class TestGetSqlFeatures(unittest.TestCase):
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertFalse(features.agg_min)
         self.assertTrue(features.agg_max)
-    
+
     def test_nested_agg(self):
         sql = "SELECT COUNT(col), MIN(col), SUM(col2-col3) FROM table"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
@@ -181,7 +181,7 @@ class TestGetSqlFeatures(unittest.TestCase):
         self.assertTrue(features.has_date_text)
         self.assertFalse(features.has_date_int)
         self.assertTrue(features.date_literal)
-    
+
     def test_date_literal(self):
         sql = "SELECT column1 FROM table WHERE column2 = '2023-01-01'"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
@@ -203,7 +203,9 @@ class TestGetSqlFeatures(unittest.TestCase):
         sql = "SELECT DATE_TRUNC('day', column) FROM table"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertTrue(features.date_trunc)
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.date_trunc)
 
     def test_strftime(self):
@@ -211,7 +213,9 @@ class TestGetSqlFeatures(unittest.TestCase):
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         self.assertTrue(features.strftime)
         self.assertFalse(features.date_time_format)
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.strftime)
         self.assertFalse(features.date_time_format)
 
@@ -232,11 +236,13 @@ class TestGetSqlFeatures(unittest.TestCase):
             "date_type_text": set(),
         }
         for sql in [sql_left, sql_right]:
-            features_with_empty_col_info = \
-                get_sql_features(sql, self.md_cols, self.md_tables, self.empty_extra_column_info)
+            features_with_empty_col_info = get_sql_features(
+                sql, self.md_cols, self.md_tables, self.empty_extra_column_info
+            )
             self.assertFalse(features_with_empty_col_info.date_comparison)
-            features_with_date_col_info = \
-                get_sql_features(sql, self.md_cols, self.md_tables, extra_column_info)
+            features_with_date_col_info = get_sql_features(
+                sql, self.md_cols, self.md_tables, extra_column_info
+            )
             self.assertTrue(features_with_date_col_info.date_comparison)
 
     def test_date_sub_date(self):
@@ -257,7 +263,9 @@ class TestGetSqlFeatures(unittest.TestCase):
             "date_type_text": set(),
         }
         # date - date
-        features = get_sql_features(sql, self.md_cols, self.md_tables, extra_column_info_both)
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, extra_column_info_both
+        )
         self.assertTrue(features.date_sub_date)
         self.assertFalse(features.date_sub)
         # x - date or date - x
@@ -266,7 +274,9 @@ class TestGetSqlFeatures(unittest.TestCase):
             self.assertFalse(features.date_sub_date)
             self.assertTrue(features.date_sub)
         # x - x
-        features = get_sql_features(sql, self.md_cols, self.md_tables, self.empty_extra_column_info)
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, self.empty_extra_column_info
+        )
         self.assertFalse(features.date_sub_date)
         self.assertFalse(features.date_sub)
 
@@ -294,46 +304,70 @@ class TestGetSqlFeatures(unittest.TestCase):
 
     def test_date_time_type_conversion(self):
         sql = "SELECT CAST(column AS TIMESTAMP) FROM table"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.date_time_type_conversion)
         sql = "SELECT CAST(column AS DATE) FROM table"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.date_time_type_conversion)
         sql = "SELECT TO_DATE(column, 'YYYY-MM-DD') FROM table"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.date_time_type_conversion)
         sql = "SELECT TO_TIMESTAMP(column, 'YYYY-MM-DD') FROM table"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.date_time_type_conversion)
         sql = "SELECT column::TIMESTAMP FROM table"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.date_time_type_conversion)
         sql = "SELECT column::DATE FROM table"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.date_time_type_conversion)
         sql = "SELECT DATE(column) FROM table"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.date_time_type_conversion)
 
     def test_date_time_format(self):
         sql = "SELECT TO_CHAR(column, 'YYYY-MM-DD') FROM table"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.date_time_format)
         self.assertTrue(features.strftime)
         sql = "SELECT TO_DATE(column, 'YYYY-MM-DD') FROM table"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertFalse(features.date_time_format)
         self.assertFalse(features.strftime)
 
     def test_generate_timeseries(self):
         sql = "SELECT generate_series(1, 10)"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.generate_timeseries)
         sql = "SELECT generate_series('2023-01-01'::DATE, '2023-01-10'::DATE, '1 day')"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.generate_timeseries)
         sql = "SELECT generate_series('2023-01-01'::TIMESTAMP, '2023-01-10'::TIMESTAMP, '1 day')"
-        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="postgres")
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="postgres"
+        )
         self.assertTrue(features.generate_timeseries)
 
     def test_string_concat(self):
@@ -1024,8 +1058,8 @@ class TestFixComma(unittest.TestCase):
     def test_fix_comma_1(self):
         cols = [
             "  CUSTOMER_EMAIL VARCHAR,",
-            "  CUSTOMER_PHONE VARCHAR(200) --Phone number of the customer", # add comma
-            "  value numeric(10,2),", # remove trailing comma
+            "  CUSTOMER_PHONE VARCHAR(200) --Phone number of the customer",  # add comma
+            "  value numeric(10,2),",  # remove trailing comma
         ]
         expected = [
             "  CUSTOMER_EMAIL VARCHAR,",
@@ -1086,7 +1120,7 @@ TEST_DB.PUBLIC.CUSTOMERS.CUSTOMER_ID can be joined with patient.ssn"""
         md_shuffled = shuffle_table_metadata(input_md_str, 42)
         self.maxDiff = None
         self.assertEqual(md_shuffled, expected_md_shuffled)
-    
+
     def test_shuffle_table_metadata_seed_2(self):
         input_md_str = """CREATE TABLE branch_info (
   branch_open_date date, --Date branch opened
@@ -1162,6 +1196,7 @@ CREATE TABLE visits (
         md_shuffled = shuffle_table_metadata(input_md_str, 0)
         print(md_shuffled)
         self.assertEqual(md_shuffled, expected_md_shuffled)
+
 
 class TestFunctions(unittest.TestCase):
     def test_is_date_or_time_str(self):
@@ -1254,7 +1289,13 @@ RIGHT JOIN unique_games ug ON pg.game_id = ug.gm_game_id;"""
 
     def test_sql_3(self):
         sql = "SELECT CAST((SELECT COUNT(aw.artwork_id) FROM artwork aw WHERE aw.year_created = 1888 AND aw.description IS NULL) AS FLOAT) / NULLIF((SELECT COUNT(at.artist_id) FROM artists AT WHERE at.nationality ilike '%French%'), 0) AS ratio;"
-        new_alias_map = {'exhibit_artworks': 'ea', 'exhibitions': 'e', 'collaborations': 'c', 'artwork': 'a', 'artists': 'ar'}
+        new_alias_map = {
+            "exhibit_artworks": "ea",
+            "exhibitions": "e",
+            "collaborations": "c",
+            "artwork": "a",
+            "artists": "ar",
+        }
         expected = "SELECT CAST((SELECT COUNT(a.artwork_id) FROM artwork AS a WHERE a.year_created = 1888 AND a.description IS NULL) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(ar.artist_id) FROM artists AS ar WHERE ar.nationality ILIKE '%French%'), 0) AS ratio"
         result = replace_alias(sql, new_alias_map)
         print(result)

@@ -234,7 +234,7 @@ def mk_delete_ddl(md: Dict[str, Any]) -> str:
         # check if the contents is a dictionary of tables or a list of tables
         is_schema = isinstance(contents, Dict)
         break
-        
+
     if is_schema:
         md_delete = ""
         for schema, tables in md.items():
@@ -288,7 +288,9 @@ def fix_md(md: Dict[str, List[Dict[str, str]]]) -> Dict[str, List[Dict[str, str]
     return md_new
 
 
-def test_valid_md_sql(sql: str, md: dict, creds: Dict = None, conn = None, verbose: bool = False):
+def test_valid_md_sql(
+    sql: str, md: dict, creds: Dict = None, conn=None, verbose: bool = False
+):
     """
     Test custom metadata and a sql query
     This will perform the following steps:
@@ -299,7 +301,7 @@ def test_valid_md_sql(sql: str, md: dict, creds: Dict = None, conn = None, verbo
     If provided with the variable `conn`, this reuses the same database connection
     to avoid creating a new connection for each query. Otherwise it will connect
     via psycopg2 using the credentials provided (note that creds should set db_name)
-    This will not manage `conn` in any way (eg closing `conn`) - it is left to 
+    This will not manage `conn` in any way (eg closing `conn`) - it is left to
     the caller to manage the connection.
     Returns tuple of (sql_valid, md_valid, err_message)
     """
@@ -546,7 +548,7 @@ def parse_md(md_str: str) -> Dict[str, List[Dict[str, str]]]:
 def get_table_names(md: str) -> List[str]:
     """
     Given a string of metadata formatted as a series of
-    CREATE TABLE statements, return a list of table names in the same order as 
+    CREATE TABLE statements, return a list of table names in the same order as
     they appear in the metadata.
     """
     table_names = []
