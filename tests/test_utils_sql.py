@@ -349,6 +349,11 @@ class TestGetSqlFeatures(unittest.TestCase):
             sql, self.md_cols, self.md_tables, dialect="tsql"
         )
         self.assertTrue(features.date_time_type_conversion)
+        sql = "SELECT CONVERT(INT, col) FROM table"
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="tsql"
+        )
+        self.assertFalse(features.date_time_type_conversion)
         sql = "SELECT DATEFROMPARTS(year_column, month_column, day_column) FROM table"
         features = get_sql_features(
             sql, self.md_cols, self.md_tables, dialect="tsql"
