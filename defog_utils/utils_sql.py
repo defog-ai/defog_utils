@@ -58,6 +58,7 @@ class SqlFeatures(Features):
     has_in: bool = False
     month_name_case_in: bool = False
     addition: bool = False
+    date_add: bool = False
     subtraction: bool = False
     ratio: bool = False
     round: bool = False
@@ -120,7 +121,7 @@ current_date_time_expressions = [
     exp.CurrentTime,
     exp.CurrentTimestamp,
 ]
-date_time_types = ["DATE", "TIMESTAMP"]
+date_time_types = ["DATE", "DATETIME", "TIMESTAMP"]
 int_types = ["INT", "INTEGER", "BIGINT", "SMALLINT", "UINT", "UBIGINT"]
 comparison_expressions = [
     # binary op with 2 children
@@ -363,7 +364,15 @@ def get_sql_features(
             if has_month_name(str(node)):
                 features.month_name_case_in = True
         elif isinstance(node, exp.Add):
+            for subnode in node.flatten():
+                if isinstance(subnode, exp.Literal):
+                    features.string_concat = True
             features.addition = True
+        elif isinstance(node, exp.DateAdd):
+            features.date_add = True
+            for sub_node in node.flatten():
+                if isinstance(sub_node, exp.Neg):
+                    features.date_sub = True
         elif isinstance(node, exp.Sub):
             features.subtraction = True
             date_cols_in_sub = 0
@@ -429,9 +438,15 @@ def get_sql_features(
             features.date_sub = True
         elif isinstance(node, exp.DateTrunc) or isinstance(node, exp.TimestampTrunc):
             features.date_trunc = True
+        elif isinstance(node, exp.Convert):
+            for sub_node in node.flatten():
+                if str(sub_node) in date_time_types:
+                    features.date_time_type_conversion = True
         elif isinstance(node, exp.StrToDate):
             features.date_time_type_conversion = True
         elif isinstance(node, exp.StrToTime):
+            features.date_time_type_conversion = True
+        elif isinstance(node, exp.DateFromParts):
             features.date_time_type_conversion = True
         elif isinstance(node, exp.Extract):
             features.date_part = True
@@ -493,7 +508,7 @@ def get_sql_features(
                 or node_name == "percent_rank"
             ):
                 features.rank = True
-            elif node_name == "date_part":
+            elif node_name == "date_part" or node_name == "datepart":
                 features.date_part = True
             elif node_name == "strftime":
                 features.strftime = True
