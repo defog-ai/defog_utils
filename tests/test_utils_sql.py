@@ -280,6 +280,12 @@ class TestGetSqlFeatures(unittest.TestCase):
         self.assertFalse(features.date_sub_date)
         self.assertFalse(features.date_sub)
 
+        # DATEDIFF(date1, date2)
+        sql = "SELECT DATEDIFF(column1, column2) FROM table"
+        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="tsql")
+        self.assertTrue(features.date_sub_date)
+        self.assertFalse(features.date_sub)
+
     def test_current_date_time(self):
         sql = "SELECT col_date - CURRENT_DATE FROM table"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
@@ -338,6 +344,16 @@ class TestGetSqlFeatures(unittest.TestCase):
             sql, self.md_cols, self.md_tables, dialect="postgres"
         )
         self.assertTrue(features.date_time_type_conversion)
+        sql = "SELECT CONVERT(DATE, date_str_column) FROM table"
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="tsql"
+        )
+        self.assertTrue(features.date_time_type_conversion)
+        sql = "SELECT DATEFROMPARTS(year_column, month_column, day_column) FROM table"
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="tsql"
+        )
+        self.assertTrue(features.date_time_type_conversion)
 
     def test_date_time_format(self):
         sql = "SELECT TO_CHAR(column, 'YYYY-MM-DD') FROM table"
@@ -352,6 +368,11 @@ class TestGetSqlFeatures(unittest.TestCase):
         )
         self.assertFalse(features.date_time_format)
         self.assertFalse(features.strftime)
+        sql = "SELECT FORMAT(column, 'YYYY-MM-DD') FROM table"
+        features = get_sql_features(
+            sql, self.md_cols, self.md_tables, dialect="tsql"
+        )
+        self.assertTrue(features.date_time_format)
 
     def test_generate_timeseries(self):
         sql = "SELECT generate_series(1, 10)"
@@ -373,6 +394,9 @@ class TestGetSqlFeatures(unittest.TestCase):
     def test_string_concat(self):
         sql = "SELECT name || ' ' || description FROM table1"
         features = get_sql_features(sql, self.md_cols, self.md_tables)
+        self.assertTrue(features.string_concat)
+        sql = "SELECT name + ' ' + description FROM table1"
+        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="tsql")
         self.assertTrue(features.string_concat)
 
     def test_string_exact_match(self):
@@ -587,7 +611,7 @@ WITH stock_stats AS (
         features = get_sql_features(sql, self.md_cols, self.md_tables)
         features_compact = features.compact()
         print(features_compact)
-        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+        expected_compact = "5,2,1,1,0,1,1,1,1,0,0,0,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
@@ -626,7 +650,7 @@ LEFT JOIN yearly_max_rpm ymr ON y.year = ymr.year ORDER BY y.year NULLS LAST;
         )
         features_compact = features.compact()
         print(features_compact)
-        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
+        expected_compact = "3,1,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0"
         self.assertEqual(features_compact, expected_compact)
         positive_features = features.positive_features()
         expected_positive = {
