@@ -1,5 +1,5 @@
 import unittest
-from defog_utils.defog_utils.utils_db import (
+from ..defog_utils.utils_db import (
     convert_data_type_postgres,
     fix_md,
     generate_aliases,

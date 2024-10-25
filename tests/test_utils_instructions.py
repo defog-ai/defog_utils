@@ -1,6 +1,6 @@
 import unittest
-from defog_utils.defog_utils.constants import idk_strings
-from defog_utils.defog_utils.utils_instructions import (
+from ..defog_utils.constants import idk_strings
+from ..defog_utils.utils_instructions import (
     InstructionFeatures,
     get_instruction_features,
 )
