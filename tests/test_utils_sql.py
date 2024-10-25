@@ -1,5 +1,5 @@
 import unittest
-from defog_utils.defog_utils.utils_sql import (
+from ..defog_utils.utils_sql import (
     add_space_padding,
     fix_comma,
     get_schema_features,
@@ -345,19 +345,13 @@ class TestGetSqlFeatures(unittest.TestCase):
         )
         self.assertTrue(features.date_time_type_conversion)
         sql = "SELECT CONVERT(DATE, date_str_column) FROM table"
-        features = get_sql_features(
-            sql, self.md_cols, self.md_tables, dialect="tsql"
-        )
+        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="tsql")
         self.assertTrue(features.date_time_type_conversion)
         sql = "SELECT CONVERT(INT, col) FROM table"
-        features = get_sql_features(
-            sql, self.md_cols, self.md_tables, dialect="tsql"
-        )
+        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="tsql")
         self.assertFalse(features.date_time_type_conversion)
         sql = "SELECT DATEFROMPARTS(year_column, month_column, day_column) FROM table"
-        features = get_sql_features(
-            sql, self.md_cols, self.md_tables, dialect="tsql"
-        )
+        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="tsql")
         self.assertTrue(features.date_time_type_conversion)
 
     def test_date_time_format(self):
@@ -374,9 +368,7 @@ class TestGetSqlFeatures(unittest.TestCase):
         self.assertFalse(features.date_time_format)
         self.assertFalse(features.strftime)
         sql = "SELECT FORMAT(column, 'YYYY-MM-DD') FROM table"
-        features = get_sql_features(
-            sql, self.md_cols, self.md_tables, dialect="tsql"
-        )
+        features = get_sql_features(sql, self.md_cols, self.md_tables, dialect="tsql")
         self.assertTrue(features.date_time_format)
 
     def test_generate_timeseries(self):

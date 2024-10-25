@@ -3,6 +3,7 @@
 Internal utilities library for Defog. These utilities comprise:
 * sql/schema/instruction feature extraction
 * database connectors and validators
+* basic llm querying across various API's (openai, anthropic, together)
 
 These utilities should be purely stateless and have minimal library dependencies.
 
