@@ -1,6 +1,9 @@
-from dataclasses import dataclass
+import os
 import time
-from typing import Optional, List, Dict
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+import google.generativeai as genai
 from anthropic import Anthropic
 from openai import OpenAI
 from together import Together
@@ -8,6 +11,7 @@ from together import Together
 client_anthropic = Anthropic()
 client_openai = OpenAI()
 client_together = Together()
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
 
 @dataclass
@@ -36,7 +40,7 @@ def chat_anthropic(
         sys_msg = messages[0]["content"]
         messages = messages[1:]
     else:
-        sys_msg = None
+        sys_msg = ""
     response = client_anthropic.messages.create(
         system=sys_msg,
         messages=messages,
@@ -97,7 +101,7 @@ def chat_openai(
 
 def chat_together(
     messages: List[Dict[str, str]],
-    model: str = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    model: str = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
     max_tokens: int = 4096,
     temperature: float = 0.0,
     stop: List[str] = [],
@@ -129,4 +133,50 @@ def chat_together(
         round(time.time() - t, 3),
         response.usage.prompt_tokens,
         response.usage.completion_tokens,
+    )
+
+
+def chat_gemini(
+    messages: List[Dict[str, str]],
+    model: str = "gemini-1.5-pro",
+    max_tokens: int = 8192,
+    temperature: float = 0.0,
+    stop: List[str] = [],
+    json_mode: bool = False,
+    seed: int = 0,
+) -> Optional[LLMResponse]:
+    t = time.time()
+    generation_config = {
+        "temperature": temperature,
+        "max_output_tokens": max_tokens,
+        "response_mime_type": "application/json" if json_mode else "text/plain",
+        "stop_sequences": stop,
+        # "seed": seed, # seed is not supported in the current version
+    }
+    if messages[0]["role"] == "system":
+        system_msg = messages[0]["content"]
+        messages = messages[1:]
+    else:
+        system_msg = None
+    final_msg = messages[-1]["content"]
+    messages = messages[:-1]
+    for msg in messages:
+        if msg["role"] != "user":
+            msg["role"] = "model"
+    client_gemini = genai.GenerativeModel(model, generation_config=generation_config, system_instruction=system_msg)
+    chat = client_gemini.start_chat(
+        history=messages,
+    )
+    response = chat.send_message(final_msg)
+    if len(response.candidates) == 0:
+        print("Empty response")
+        return None
+    if response.candidates[0].finish_reason.value != 1: # 1 is the finish reason for STOP
+        print("Max tokens reached")
+        return None
+    return LLMResponse(
+        content=response.candidates[0].content.parts[0].text,
+        time=round(time.time() - t, 3),
+        input_tokens=response.usage_metadata.prompt_token_count,
+        output_tokens=response.usage_metadata.candidates_token_count,
     )
