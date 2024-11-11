@@ -76,6 +76,11 @@ def chat_openai(
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
     """
     t = time.time()
+    if model in ["o1-mini", "o1-preview", "o1"]:
+        if messages[0].get("role") == "system":
+            sys_msg = messages[0]["content"]
+            messages = messages[1:]
+            messages[0]["content"] = sys_msg + messages[0]["content"]
     response = client_openai.chat.completions.create(
         messages=messages,
         model=model,
@@ -163,7 +168,9 @@ def chat_gemini(
     for msg in messages:
         if msg["role"] != "user":
             msg["role"] = "model"
-    client_gemini = genai.GenerativeModel(model, generation_config=generation_config, system_instruction=system_msg)
+    client_gemini = genai.GenerativeModel(
+        model, generation_config=generation_config, system_instruction=system_msg
+    )
     chat = client_gemini.start_chat(
         history=messages,
     )
@@ -171,7 +178,9 @@ def chat_gemini(
     if len(response.candidates) == 0:
         print("Empty response")
         return None
-    if response.candidates[0].finish_reason.value != 1: # 1 is the finish reason for STOP
+    if (
+        response.candidates[0].finish_reason.value != 1
+    ):  # 1 is the finish reason for STOP
         print("Max tokens reached")
         return None
     return LLMResponse(
