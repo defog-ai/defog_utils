@@ -30,7 +30,6 @@ def chat_anthropic(
     """
     Returns the response from the Anthropic API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
     Note that anthropic doesn't have explicit json mode api constraints, nor does it have a seed parameter.
-    the max_tokens parameter refers to the maximum completion tokens, not the maximum total tokens.
     """
     client_anthropic = Anthropic()
     t = time.time()
@@ -122,7 +121,7 @@ def chat_together(
 ) -> Optional[LLMResponse]:
     """
     Returns the response from the Together API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
-    Together's max_tokens refers to the maximum completion tokens, not the maximum total tokens, hence requires calculating 8192 - input_tokens.
+    Together's max_tokens refers to the maximum completion tokens.
     Together doesn't have explicit json mode api constraints.
     """
     client_together = Together()
