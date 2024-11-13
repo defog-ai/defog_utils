@@ -32,7 +32,7 @@ def map_model_to_chat_fn(model: str) -> Callable:
 def chat(
     models,
     messages,
-    max_completion_tokens=8192,
+    max_completion_tokens=4096,
     temperature=0.0,
     stop=[],
     json_mode=False,
