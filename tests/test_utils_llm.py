@@ -8,7 +8,9 @@ from ..defog_utils.utils_llm import (
     chat_together,
 )
 
-messages_no_sys = [{"role": "user", "content": "Return a greeting in not more than 2 words\n"}]
+messages_no_sys = [
+    {"role": "user", "content": "Return a greeting in not more than 2 words\n"}
+]
 messages_sql = [
     {
         "role": "system",
@@ -58,6 +60,7 @@ acceptable_sql = [
     "select count(order_id) as total_orders from orders",
 ]
 
+
 class TestChatClients(unittest.TestCase):
 
     def check_sql(self, sql: str):
@@ -67,7 +70,7 @@ class TestChatClients(unittest.TestCase):
         response = chat_anthropic(
             messages_no_sys,
             model="claude-3-haiku-20240307",
-            max_tokens=10,
+            max_completion_tokens=10,
             seed=0,
         )
         print(response)
@@ -80,7 +83,7 @@ class TestChatClients(unittest.TestCase):
         response = chat_gemini(
             messages_no_sys,
             model="gemini-1.5-flash",
-            max_tokens=10,
+            max_completion_tokens=10,
             seed=0,
         )
         print(response)
@@ -93,7 +96,7 @@ class TestChatClients(unittest.TestCase):
         response = chat_openai(
             messages_no_sys,
             model="gpt-4o-mini",
-            max_tokens=10,
+            max_completion_tokens=10,
             seed=0,
         )
         print(response)
@@ -106,20 +109,20 @@ class TestChatClients(unittest.TestCase):
         response = chat_together(
             messages_no_sys,
             model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-            max_tokens=10,
+            max_completion_tokens=10,
             seed=0,
         )
         print(response)
         self.assertIsInstance(response, LLMResponse)
         self.assertIsInstance(response.content, str)
-        self.assertEqual(response.input_tokens, 46) # hidden sys prompt added I think
+        self.assertEqual(response.input_tokens, 46)  # hidden sys prompt added I think
         self.assertLessEqual(response.output_tokens, 10)
 
     def test_chat_anthropic_sql(self):
         response = chat_anthropic(
             messages_sql,
             model="claude-3-haiku-20240307",
-            max_tokens=100,
+            max_completion_tokens=100,
             stop=[";"],
             seed=0,
         )
@@ -151,7 +154,9 @@ class TestChatClients(unittest.TestCase):
         self.assertTrue(response.output_tokens < 10)  # output tokens should be < 10
 
     def test_chat_gemini_sql(self):
-        response = chat_gemini(messages_sql, model="gemini-1.5-flash", stop=[";"], seed=0)
+        response = chat_gemini(
+            messages_sql, model="gemini-1.5-flash", stop=[";"], seed=0
+        )
         print(response)
         self.assertIsInstance(response, LLMResponse)
         self.check_sql(response.content)
@@ -162,7 +167,7 @@ class TestChatClients(unittest.TestCase):
         response = chat_anthropic(
             messages_json,
             model="claude-3-haiku-20240307",
-            max_tokens=100,
+            max_completion_tokens=100,
             seed=0,
             json_mode=True,
         )
