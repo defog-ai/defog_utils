@@ -30,7 +30,13 @@ def map_model_to_chat_fn(model: str) -> Callable:
 
 
 def chat(
-    models, messages, max_tokens=8192, temperature=0.0, stop=[], json_mode=False, seed=0
+    models,
+    messages,
+    max_completion_tokens=8192,
+    temperature=0.0,
+    stop=[],
+    json_mode=False,
+    seed=0,
 ) -> Dict[str, LLMResponse]:
     """
     Returns the response from the LLM API for each of the models passed in.
@@ -42,7 +48,7 @@ def chat(
                 map_model_to_chat_fn(model),
                 messages,
                 model,
-                max_tokens,
+                max_completion_tokens,
                 temperature,
                 stop,
                 json_mode,
