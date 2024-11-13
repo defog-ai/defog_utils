@@ -8,11 +8,6 @@ from anthropic import Anthropic
 from openai import OpenAI
 from together import Together
 
-client_anthropic = Anthropic()
-client_openai = OpenAI()
-client_together = Together()
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-
 
 @dataclass
 class LLMResponse:
@@ -20,12 +15,13 @@ class LLMResponse:
     time: float
     input_tokens: int
     output_tokens: int
+    output_tokens_details: Optional[Dict[str, int]] = None
 
 
 def chat_anthropic(
     messages: List[Dict[str, str]],
     model: str = "claude-3-5-sonnet-20241022",
-    max_tokens: int = 8192,
+    max_completion_tokens: int = 8192,
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
@@ -34,7 +30,9 @@ def chat_anthropic(
     """
     Returns the response from the Anthropic API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
     Note that anthropic doesn't have explicit json mode api constraints, nor does it have a seed parameter.
+    the max_tokens parameter refers to the maximum completion tokens, not the maximum total tokens.
     """
+    client_anthropic = Anthropic()
     t = time.time()
     if len(messages) >= 1 and messages[0].get("role") == "system":
         sys_msg = messages[0]["content"]
@@ -45,7 +43,7 @@ def chat_anthropic(
         system=sys_msg,
         messages=messages,
         model=model,
-        max_tokens=max_tokens,
+        max_tokens=max_completion_tokens,
         temperature=temperature,
         stop_sequences=stop,
     )
@@ -66,7 +64,7 @@ def chat_anthropic(
 def chat_openai(
     messages: List[Dict[str, str]],
     model: str = "gpt-4o",
-    max_tokens: int = 16384,
+    max_completion_tokens: int = 16384,
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
@@ -74,22 +72,30 @@ def chat_openai(
 ) -> Optional[LLMResponse]:
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
+    We use max_completion_tokens here, instead of using max_tokens. This is to support o1 models.
     """
+    client_openai = OpenAI()
     t = time.time()
     if model in ["o1-mini", "o1-preview", "o1"]:
         if messages[0].get("role") == "system":
             sys_msg = messages[0]["content"]
             messages = messages[1:]
             messages[0]["content"] = sys_msg + messages[0]["content"]
-    response = client_openai.chat.completions.create(
-        messages=messages,
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        stop=stop,
-        response_format={"type": "json_object"} if json_mode else None,
-        seed=seed,
-    )
+        response = client_openai.chat.completions.create(
+            messages=messages,
+            model=model,
+            max_completion_tokens=max_completion_tokens,
+        )
+    else:
+        response = client_openai.chat.completions.create(
+            messages=messages,
+            model=model,
+            max_completion_tokens=max_completion_tokens,
+            temperature=temperature,
+            stop=stop,
+            response_format={"type": "json_object"} if json_mode else None,
+            seed=seed,
+        )
     if response.choices[0].finish_reason == "length":
         print("Max tokens reached")
         return None
@@ -101,13 +107,14 @@ def chat_openai(
         round(time.time() - t, 3),
         response.usage.prompt_tokens,
         response.usage.completion_tokens,
+        response.usage.completion_tokens_details,
     )
 
 
 def chat_together(
     messages: List[Dict[str, str]],
     model: str = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
-    max_tokens: int = 4096,
+    max_completion_tokens: int = 4096,
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
@@ -118,11 +125,12 @@ def chat_together(
     Together's max_tokens refers to the maximum completion tokens, not the maximum total tokens, hence requires calculating 8192 - input_tokens.
     Together doesn't have explicit json mode api constraints.
     """
+    client_together = Together()
     t = time.time()
     response = client_together.chat.completions.create(
         messages=messages,
         model=model,
-        max_tokens=max_tokens,
+        max_tokens=max_completion_tokens,
         temperature=temperature,
         stop=stop,
         seed=seed,
@@ -144,16 +152,17 @@ def chat_together(
 def chat_gemini(
     messages: List[Dict[str, str]],
     model: str = "gemini-1.5-pro",
-    max_tokens: int = 8192,
+    max_completion_tokens: int = 8192,
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
     seed: int = 0,
 ) -> Optional[LLMResponse]:
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
     t = time.time()
     generation_config = {
         "temperature": temperature,
-        "max_output_tokens": max_tokens,
+        "max_output_tokens": max_completion_tokens,
         "response_mime_type": "application/json" if json_mode else "text/plain",
         "stop_sequences": stop,
         # "seed": seed, # seed is not supported in the current version
