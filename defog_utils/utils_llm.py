@@ -3,11 +3,6 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-import google.generativeai as genai
-from anthropic import Anthropic
-from openai import OpenAI
-from together import Together
-
 
 @dataclass
 class LLMResponse:
@@ -31,6 +26,8 @@ def chat_anthropic(
     Returns the response from the Anthropic API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
     Note that anthropic doesn't have explicit json mode api constraints, nor does it have a seed parameter.
     """
+    from anthropic import Anthropic
+
     client_anthropic = Anthropic()
     t = time.time()
     if len(messages) >= 1 and messages[0].get("role") == "system":
@@ -73,6 +70,8 @@ def chat_openai(
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
     We use max_completion_tokens here, instead of using max_tokens. This is to support o1 models.
     """
+    from openai import OpenAI
+
     client_openai = OpenAI()
     t = time.time()
     if model in ["o1-mini", "o1-preview", "o1"]:
@@ -124,6 +123,8 @@ def chat_together(
     Together's max_tokens refers to the maximum completion tokens.
     Together doesn't have explicit json mode api constraints.
     """
+    from together import Together
+
     client_together = Together()
     t = time.time()
     response = client_together.chat.completions.create(
@@ -157,6 +158,8 @@ def chat_gemini(
     json_mode: bool = False,
     seed: int = 0,
 ) -> Optional[LLMResponse]:
+    import google.generativeai as genai
+
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
     t = time.time()
     generation_config = {
