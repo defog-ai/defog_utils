@@ -1,11 +1,15 @@
 import json
 import unittest
+import pytest
 from ..defog_utils.utils_llm import (
     LLMResponse,
     chat_anthropic,
     chat_gemini,
     chat_openai,
     chat_together,
+    chat_anthropic_async,
+    chat_openai_async,
+    chat_together_async,
 )
 
 messages_no_sys = [
@@ -79,6 +83,20 @@ class TestChatClients(unittest.TestCase):
         self.assertEqual(response.input_tokens, 18)
         self.assertLessEqual(response.output_tokens, 10)
 
+    @pytest.mark.asyncio
+    async def test_chat_anthropic_no_sys_async(self):
+        response = await chat_anthropic_async(
+            "claude-3-haiku-20240307",
+            messages_no_sys,
+            max_completion_tokens=10,
+            seed=0,
+        )
+        print(response)
+        self.assertIsInstance(response, LLMResponse)
+        self.assertIsInstance(response.content, str)
+        self.assertEqual(response.input_tokens, 18)
+        self.assertLessEqual(response.output_tokens, 10)
+
     def test_chat_gemini_no_sys(self):
         response = chat_gemini(
             messages_no_sys,
@@ -105,10 +123,35 @@ class TestChatClients(unittest.TestCase):
         self.assertEqual(response.input_tokens, 18)
         self.assertLessEqual(response.output_tokens, 10)
 
+    @pytest.mark.asyncio
+    async def test_chat_openai_no_sys_async(self):
+        response = await chat_openai_async(
+            "gpt-4o-mini", messages_no_sys, max_completion_tokens=10, seed=0
+        )
+        print(response)
+        self.assertIsInstance(response, LLMResponse)
+        self.assertIsInstance(response.content, str)
+        self.assertEqual(response.input_tokens, 18)
+        self.assertLessEqual(response.output_tokens, 10)
+
     def test_chat_together_no_sys(self):
         response = chat_together(
             messages_no_sys,
             model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            max_completion_tokens=10,
+            seed=0,
+        )
+        print(response)
+        self.assertIsInstance(response, LLMResponse)
+        self.assertIsInstance(response.content, str)
+        self.assertEqual(response.input_tokens, 46)  # hidden sys prompt added I think
+        self.assertLessEqual(response.output_tokens, 10)
+
+    @pytest.mark.asyncio
+    async def test_chat_together_no_sys_async(self):
+        response = await chat_together_async(
+            "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            messages_no_sys,
             max_completion_tokens=10,
             seed=0,
         )
@@ -132,8 +175,34 @@ class TestChatClients(unittest.TestCase):
         self.assertEqual(response.input_tokens, 90)  # 90 input tokens
         self.assertTrue(response.output_tokens < 15)  # output tokens should be < 15
 
+    @pytest.mark.asyncio
+    async def test_chat_anthropic_sql_async(self):
+        response = await chat_anthropic_async(
+            "claude-3-haiku-20240307",
+            messages_sql,
+            max_completion_tokens=100,
+            stop=[";"],
+            seed=0,
+        )
+        print(response)
+        self.assertIsInstance(response, LLMResponse)
+        self.check_sql(response.content)
+        self.assertEqual(response.input_tokens, 90)  # 90 input tokens
+        self.assertTrue(response.output_tokens < 15)  # output tokens should be < 15
+
     def test_chat_openai_sql(self):
         response = chat_openai(messages_sql, model="gpt-4o-mini", stop=[";"], seed=0)
+        print(response)
+        self.assertIsInstance(response, LLMResponse)
+        self.check_sql(response.content)
+        self.assertEqual(response.input_tokens, 83)
+        self.assertTrue(response.output_tokens < 10)  # output tokens should be < 10
+
+    @pytest.mark.asyncio
+    async def test_chat_openai_sql_async(self):
+        response = await chat_openai_async(
+            "gpt-4o-mini", messages_sql, stop=[";"], seed=0
+        )
         print(response)
         self.assertIsInstance(response, LLMResponse)
         self.check_sql(response.content)
@@ -144,6 +213,20 @@ class TestChatClients(unittest.TestCase):
         response = chat_together(
             messages_sql,
             model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            stop=[";"],
+            seed=0,
+        )
+        print(response)
+        self.assertIsInstance(response, LLMResponse)
+        self.check_sql(response.content)
+        self.assertEqual(response.input_tokens, 108)
+        self.assertTrue(response.output_tokens < 10)  # output tokens should be < 10
+
+    @pytest.mark.asyncio
+    async def test_chat_together_sql_async(self):
+        response = await chat_together_async(
+            "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            messages_sql,
             stop=[";"],
             seed=0,
         )
@@ -179,9 +262,39 @@ class TestChatClients(unittest.TestCase):
         self.assertIsInstance(response.input_tokens, int)
         self.assertIsInstance(response.output_tokens, int)
 
+    @pytest.mark.asyncio
+    async def test_chat_json_anthropic_async(self):
+        response = await chat_anthropic_async(
+            "claude-3-haiku-20240307",
+            messages_json,
+            max_completion_tokens=100,
+            seed=0,
+            json_mode=True,
+        )
+        print(response)
+        self.assertIsInstance(response, LLMResponse)
+        resp_dict = json.loads(response.content)
+        self.check_sql(resp_dict["sql"])
+        self.assertIsInstance(resp_dict["reasoning"], str)
+        self.assertIsInstance(response.input_tokens, int)
+        self.assertIsInstance(response.output_tokens, int)
+
     def test_chat_json_openai(self):
         response = chat_openai(
             messages_json, model="gpt-4o-mini", seed=0, json_mode=True
+        )
+        print(response)
+        self.assertIsInstance(response, LLMResponse)
+        resp_dict = json.loads(response.content)
+        self.check_sql(resp_dict["sql"])
+        self.assertIsInstance(resp_dict["reasoning"], str)
+        self.assertIsInstance(response.input_tokens, int)
+        self.assertIsInstance(response.output_tokens, int)
+
+    @pytest.mark.asyncio
+    async def test_chat_json_openai_async(self):
+        response = await chat_openai_async(
+            "gpt-4o-mini", messages_json, seed=0, json_mode=True
         )
         print(response)
         self.assertIsInstance(response, LLMResponse)
@@ -202,6 +315,22 @@ class TestChatClients(unittest.TestCase):
         self.assertIsInstance(response, LLMResponse)
         raw_output = response.content
         resp_dict = json.loads(raw_output)
+        self.check_sql(resp_dict["sql"])
+        self.assertIsInstance(resp_dict["reasoning"], str)
+        self.assertIsInstance(response.input_tokens, int)
+        self.assertIsInstance(response.output_tokens, int)
+
+    @pytest.mark.asyncio
+    async def test_chat_json_together_async(self):
+        response = await chat_together_async(
+            "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            messages_json,
+            seed=0,
+            json_mode=True,
+        )
+        print(response)
+        self.assertIsInstance(response, LLMResponse)
+        resp_dict = json.loads(response.content)
         self.check_sql(resp_dict["sql"])
         self.assertIsInstance(resp_dict["reasoning"], str)
         self.assertIsInstance(response.input_tokens, int)
