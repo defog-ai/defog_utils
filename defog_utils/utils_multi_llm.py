@@ -39,7 +39,7 @@ def map_model_to_chat_fn_async(model: str) -> Callable:
     if model.startswith("claude"):
         return chat_anthropic_async
     if model.startswith("gemini"):
-        return ValueError("Gemini does not support async chat")
+        raise ValueError("Gemini does not support async chat")
     if model.startswith("gpt") or model in ["o1", "o1-mini", "o1-preview"]:
         return chat_openai_async
     if (
