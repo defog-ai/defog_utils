@@ -1,11 +1,20 @@
 import unittest
-from ..defog_utils.utils_multi_llm import map_model_to_chat_fn, chat
+import pytest
+from ..defog_utils.utils_multi_llm import (
+    map_model_to_chat_fn,
+    map_model_to_chat_fn_async,
+    chat,
+    chat_async,
+)
 from ..defog_utils.utils_llm import (
     LLMResponse,
     chat_anthropic,
     chat_gemini,
     chat_openai,
     chat_together,
+    chat_anthropic_async,
+    chat_openai_async,
+    chat_together_async,
 )
 
 messages_sql = [
@@ -59,6 +68,28 @@ class TestChatClients(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             map_model_to_chat_fn("unknown-model")
+
+    def test_map_model_to_chat_fn_async(self):
+        self.assertEqual(
+            map_model_to_chat_fn_async("claude-3-5-sonnet-20241022"),
+            chat_anthropic_async,
+        )
+
+        with self.assertRaises(ValueError):
+            map_model_to_chat_fn_async("gemini-1.5-flash-002")
+
+        self.assertEqual(map_model_to_chat_fn_async("gpt-4o-mini"), chat_openai_async)
+        self.assertEqual(
+            map_model_to_chat_fn_async("meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"),
+            chat_together_async,
+        )
+        self.assertEqual(
+            map_model_to_chat_fn_async("Qwen/Qwen2.5-72B-Instruct-Turbo"),
+            chat_together_async,
+        )
+
+        with self.assertRaises(ValueError):
+            map_model_to_chat_fn_async("unknown-model")
 
     def test_simple_chat(self):
         models = [
@@ -115,6 +146,61 @@ class TestChatClients(unittest.TestCase):
             print(model, response)
             self.assertIsInstance(response, LLMResponse)
             self.assertIsInstance(response.content, str)
+            self.assertIsInstance(response.time, float)
+            self.assertLess(response.input_tokens, 110)
+            self.assertLess(response.output_tokens, 20)
+
+    @pytest.mark.asyncio
+    async def test_simple_chat_async(self):
+        models = [
+            "claude-3-haiku-20240307",
+            "gpt-4o-mini",
+            "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            "o1-mini",
+        ]
+        messages = [
+            {"role": "user", "content": "Return a greeting in not more than 2 words\n"}
+        ]
+        for model in models:
+            response = await chat_async(
+                model,
+                messages,
+                max_completion_tokens=20,
+                temperature=0.0,
+                stop=[";"],
+                json_mode=False,
+                seed=0,
+            )
+            print(model, response)
+            self.assertIsInstance(response, LLMResponse)
+            self.assertIsInstance(response.content, str)
+            self.assertIsInstance(response.time, float)
+            self.assertLess(
+                response.input_tokens, 50
+            )  # higher as default system prompt is added in together's API when none provided
+            self.assertLess(response.output_tokens, 20)
+
+    @pytest.mark.asyncio
+    async def test_sql_chat_async(self):
+        models = [
+            "claude-3-haiku-20240307",
+            "gpt-4o-mini",
+            "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            "o1-mini",
+        ]
+        for model in models:
+            response = await chat_async(
+                model,
+                messages_sql,
+                max_completion_tokens=20,
+                temperature=0.0,
+                stop=[";"],
+                json_mode=False,
+                seed=0,
+            )
+            print(model, response)
+            self.assertIsInstance(response, LLMResponse)
+            self.check_sql(response.content)
             self.assertIsInstance(response.time, float)
             self.assertLess(response.input_tokens, 110)
             self.assertLess(response.output_tokens, 20)
