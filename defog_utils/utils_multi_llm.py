@@ -58,6 +58,7 @@ async def chat_async(
     temperature=0.0,
     stop=[],
     json_mode=False,
+    response_format=None,
     seed=0,
 ) -> LLMResponse:
     """
@@ -70,6 +71,7 @@ async def chat_async(
         temperature=temperature,
         stop=stop,
         json_mode=json_mode,
+        response_format=response_format,
         seed=seed,
     )
 
@@ -81,6 +83,7 @@ def chat(
     temperature=0.0,
     stop=[],
     json_mode=False,
+    response_format=None,
     seed=0,
 ) -> Dict[str, LLMResponse]:
     """
@@ -97,6 +100,7 @@ def chat(
                 temperature,
                 stop,
                 json_mode,
+                response_format,
                 seed,
             ): model
             for model in models

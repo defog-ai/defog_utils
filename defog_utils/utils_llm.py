@@ -2,7 +2,6 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional
-import asyncio
 
 
 @dataclass
@@ -21,6 +20,7 @@ def chat_anthropic(
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
+    response_format=None,
     seed: int = 0,
 ) -> Optional[LLMResponse]:
     """
@@ -65,6 +65,7 @@ async def chat_anthropic_async(
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
+    response_format=None,
     seed: int = 0,
 ) -> Optional[LLMResponse]:
     """
@@ -109,6 +110,7 @@ def chat_openai(
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
+    response_format=None,
     seed: int = 0,
 ) -> Optional[LLMResponse]:
     """
@@ -136,7 +138,7 @@ def chat_openai(
             max_completion_tokens=max_completion_tokens,
             temperature=temperature,
             stop=stop,
-            response_format={"type": "json_object"} if json_mode else None,
+            response_format={"type": "json_object"} if json_mode else response_format,
             seed=seed,
         )
     if response.choices[0].finish_reason == "length":
@@ -161,6 +163,7 @@ async def chat_openai_async(
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
+    response_format=None,
     seed: int = 0,
 ) -> Optional[LLMResponse]:
     """
@@ -188,7 +191,7 @@ async def chat_openai_async(
             max_completion_tokens=max_completion_tokens,
             temperature=temperature,
             stop=stop,
-            response_format={"type": "json_object"} if json_mode else None,
+            response_format={"type": "json_object"} if json_mode else response_format,
             seed=seed,
         )
     if response.choices[0].finish_reason == "length":
@@ -213,6 +216,7 @@ def chat_together(
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
+    response_format=None,
     seed: int = 0,
 ) -> Optional[LLMResponse]:
     """
@@ -253,6 +257,7 @@ async def chat_together_async(
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
+    response_format=None,
     seed: int = 0,
 ) -> Optional[LLMResponse]:
     """
@@ -293,6 +298,7 @@ def chat_gemini(
     temperature: float = 0.0,
     stop: List[str] = [],
     json_mode: bool = False,
+    response_format=None,
     seed: int = 0,
 ) -> Optional[LLMResponse]:
     import google.generativeai as genai
