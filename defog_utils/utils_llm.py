@@ -1,12 +1,12 @@
 import os
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 
 @dataclass
 class LLMResponse:
-    content: str
+    content: Any
     time: float
     input_tokens: int
     output_tokens: int
@@ -132,23 +132,39 @@ def chat_openai(
             max_completion_tokens=max_completion_tokens,
         )
     else:
-        response = client_openai.chat.completions.create(
-            messages=messages,
-            model=model,
-            max_completion_tokens=max_completion_tokens,
-            temperature=temperature,
-            stop=stop,
-            response_format={"type": "json_object"} if json_mode else response_format,
-            seed=seed,
-        )
+        if response_format or json_mode:
+            response = client_openai.beta.chat.completions.parse(
+                messages=messages,
+                model=model,
+                max_completion_tokens=max_completion_tokens,
+                temperature=temperature,
+                stop=stop,
+                response_format={"type": "json_object"} if json_mode else response_format,
+                seed=seed,
+            )
+        else:
+            response = client_openai.chat.completions.create(
+                messages=messages,
+                model=model,
+                max_completion_tokens=max_completion_tokens,
+                temperature=temperature,
+                stop=stop,
+                seed=seed,
+            )
     if response.choices[0].finish_reason == "length":
         print("Max tokens reached")
         return None
     if len(response.choices) == 0:
         print("Empty response")
         return None
+    
+    if response_format:
+        content = response.choices[0].message.parsed
+    else:
+        content = response.choices[0].message.content
+    
     return LLMResponse(
-        response.choices[0].message.content,
+        content,
         round(time.time() - t, 3),
         response.usage.prompt_tokens,
         response.usage.completion_tokens,
@@ -185,15 +201,31 @@ async def chat_openai_async(
             max_completion_tokens=max_completion_tokens,
         )
     else:
-        response = await client_openai.chat.completions.create(
-            messages=messages,
-            model=model,
-            max_completion_tokens=max_completion_tokens,
-            temperature=temperature,
-            stop=stop,
-            response_format={"type": "json_object"} if json_mode else response_format,
-            seed=seed,
-        )
+        if response_format or json_mode:
+            response = await client_openai.beta.chat.completions.parse(
+                messages=messages,
+                model=model,
+                max_completion_tokens=max_completion_tokens,
+                temperature=temperature,
+                stop=stop,
+                response_format={"type": "json_object"} if json_mode else response_format,
+                seed=seed,
+            )
+        else:
+            response = await client_openai.chat.completions.create(
+                messages=messages,
+                model=model,
+                max_completion_tokens=max_completion_tokens,
+                temperature=temperature,
+                stop=stop,
+                seed=seed,
+            )
+    
+    if response_format:
+        content = response.choices[0].message.parsed
+    else:
+        content = response.choices[0].message.content
+    
     if response.choices[0].finish_reason == "length":
         print("Max tokens reached")
         return None
@@ -201,7 +233,7 @@ async def chat_openai_async(
         print("Empty response")
         return None
     return LLMResponse(
-        response.choices[0].message.content,
+        content,
         round(time.time() - t, 3),
         response.usage.prompt_tokens,
         response.usage.completion_tokens,
