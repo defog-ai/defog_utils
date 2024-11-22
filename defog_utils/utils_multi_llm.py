@@ -66,6 +66,7 @@ async def chat_async(
     """
     llm_function = map_model_to_chat_fn_async(model)
     return await llm_function(
+        model=model,
         messages=messages,
         max_completion_tokens=max_completion_tokens,
         temperature=temperature,

@@ -126,6 +126,7 @@ def chat_openai(
             sys_msg = messages[0]["content"]
             messages = messages[1:]
             messages[0]["content"] = sys_msg + messages[0]["content"]
+        
         response = client_openai.chat.completions.create(
             messages=messages,
             model=model,
@@ -158,7 +159,7 @@ def chat_openai(
         print("Empty response")
         return None
     
-    if response_format:
+    if response_format and model not in ["o1-mini", "o1-preview", "o1"]:
         content = response.choices[0].message.parsed
     else:
         content = response.choices[0].message.content
@@ -195,6 +196,7 @@ async def chat_openai_async(
             sys_msg = messages[0]["content"]
             messages = messages[1:]
             messages[0]["content"] = sys_msg + messages[0]["content"]
+        
         response = await client_openai.chat.completions.create(
             messages=messages,
             model=model,
@@ -221,7 +223,7 @@ async def chat_openai_async(
                 seed=seed,
             )
     
-    if response_format:
+    if response_format and model not in ["o1-mini", "o1-preview", "o1"]:
         content = response.choices[0].message.parsed
     else:
         content = response.choices[0].message.content
