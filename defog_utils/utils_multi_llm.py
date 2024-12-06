@@ -60,6 +60,8 @@ async def chat_async(
     json_mode=False,
     response_format=None,
     seed=0,
+    store=True,
+    metadata=None,
 ) -> LLMResponse:
     """
     Returns the response from the LLM API for a single model that is passed in.
@@ -74,6 +76,8 @@ async def chat_async(
         json_mode=json_mode,
         response_format=response_format,
         seed=seed,
+        store=store,
+        metadata=metadata,
     )
 
 

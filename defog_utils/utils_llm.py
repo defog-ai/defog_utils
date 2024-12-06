@@ -67,6 +67,8 @@ async def chat_anthropic_async(
     json_mode: bool = False,
     response_format=None,
     seed: int = 0,
+    store=True,
+    metadata=None,
 ) -> Optional[LLMResponse]:
     """
     Returns the response from the Anthropic API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -182,6 +184,8 @@ async def chat_openai_async(
     json_mode: bool = False,
     response_format=None,
     seed: int = 0,
+    store=True,
+    metadata=None,
 ) -> Optional[LLMResponse]:
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -201,6 +205,8 @@ async def chat_openai_async(
             messages=messages,
             model=model,
             max_completion_tokens=max_completion_tokens,
+            store=store,
+            metadata=metadata,
         )
     else:
         if response_format or json_mode:
@@ -212,6 +218,8 @@ async def chat_openai_async(
                 stop=stop,
                 response_format={"type": "json_object"} if json_mode else response_format,
                 seed=seed,
+                store=store,
+                metadata=metadata,
             )
         else:
             response = await client_openai.chat.completions.create(
@@ -221,6 +229,8 @@ async def chat_openai_async(
                 temperature=temperature,
                 stop=stop,
                 seed=seed,
+                store=store,
+                metadata=metadata,
             )
     
     if response_format and model not in ["o1-mini", "o1-preview", "o1"]:
@@ -293,6 +303,8 @@ async def chat_together_async(
     json_mode: bool = False,
     response_format=None,
     seed: int = 0,
+    store=True,
+    metadata=None,
 ) -> Optional[LLMResponse]:
     """
     Returns the response from the Together API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
