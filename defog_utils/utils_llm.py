@@ -195,7 +195,7 @@ async def chat_openai_async(
 
     client_openai = AsyncOpenAI()
     t = time.time()
-    if model in ["o1-mini", "o1-preview", "o1"]:
+    if model.startswith("o1"):
         if messages[0].get("role") == "system":
             sys_msg = messages[0]["content"]
             messages = messages[1:]
@@ -233,7 +233,7 @@ async def chat_openai_async(
                 metadata=metadata,
             )
     
-    if response_format and model not in ["o1-mini", "o1-preview", "o1"]:
+    if response_format and not model.startswith("o1"):
         content = response.choices[0].message.parsed
     else:
         content = response.choices[0].message.content
