@@ -64,7 +64,7 @@ async def chat_async(
     seed=0,
     store=True,
     metadata=None,
-) -> Optional[LLMResponse]:
+) -> LLMResponse:
     """
     Returns the response from the LLM API for a single model that is passed in.
     Includes retry logic with exponential backoff for up to 3 attempts.
@@ -88,9 +88,6 @@ async def chat_async(
                 metadata=metadata,
             )
         except Exception as e:
-            if attempt == max_retries - 1:  # Last attempt
-                raise  # Re-raise the last exception
-            
             delay = base_delay * (2 ** attempt)  # Exponential backoff
             print(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...")
             await asyncio.sleep(delay)
