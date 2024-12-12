@@ -1,5 +1,6 @@
 import concurrent
-from typing import Callable, Dict
+import asyncio
+from typing import Callable, Dict, List, Dict, Any, Optional, Union
 
 from .utils_llm import (
     LLMResponse,
@@ -63,23 +64,39 @@ async def chat_async(
     seed=0,
     store=True,
     metadata=None,
-) -> LLMResponse:
+) -> Optional[LLMResponse]:
     """
     Returns the response from the LLM API for a single model that is passed in.
+    Includes retry logic with exponential backoff for up to 3 attempts.
     """
     llm_function = map_model_to_chat_fn_async(model)
-    return await llm_function(
-        model=model,
-        messages=messages,
-        max_completion_tokens=max_completion_tokens,
-        temperature=temperature,
-        stop=stop,
-        json_mode=json_mode,
-        response_format=response_format,
-        seed=seed,
-        store=store,
-        metadata=metadata,
-    )
+    max_retries = 3
+    base_delay = 1  # Initial delay in seconds
+    
+    for attempt in range(max_retries):
+        try:
+            return await llm_function(
+                model=model,
+                messages=messages,
+                max_completion_tokens=max_completion_tokens,
+                temperature=temperature,
+                stop=stop,
+                json_mode=json_mode,
+                response_format=response_format,
+                seed=seed,
+                store=store,
+                metadata=metadata,
+            )
+        except Exception as e:
+            if attempt == max_retries - 1:  # Last attempt
+                raise  # Re-raise the last exception
+            
+            delay = base_delay * (2 ** attempt)  # Exponential backoff
+            print(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...")
+            await asyncio.sleep(delay)
+    
+    # If we get here, all attempts failed
+    raise Exception("All attempts at calling the chat_async function failed")
 
 
 def chat(
