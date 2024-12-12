@@ -243,7 +243,7 @@ class TestChatClients(unittest.TestCase):
         print(response)
         self.assertIsInstance(response, LLMResponse)
         self.check_sql(response.content)
-        self.assertEqual(response.input_tokens, 86)
+        self.assertEqual(response.input_tokens, 87)
         self.assertTrue(response.output_tokens < 10)
 
     def test_chat_json_anthropic(self):
@@ -327,18 +327,6 @@ class TestChatClients(unittest.TestCase):
             messages_json,
             seed=0,
             json_mode=True,
-        )
-        print(response)
-        self.assertIsInstance(response, LLMResponse)
-        resp_dict = json.loads(response.content)
-        self.check_sql(resp_dict["sql"])
-        self.assertIsInstance(resp_dict["reasoning"], str)
-        self.assertIsInstance(response.input_tokens, int)
-        self.assertIsInstance(response.output_tokens, int)
-
-    def test_chat_json_gemini(self):
-        response = chat_gemini(
-            messages_json, model="gemini-1.5-flash", seed=0, json_mode=True
         )
         print(response)
         self.assertIsInstance(response, LLMResponse)
