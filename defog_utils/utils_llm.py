@@ -366,7 +366,7 @@ def chat_gemini(
 
     generation_config = types.GenerateContentConfig(
         temperature=temperature,
-        system_instructions=system_msg,
+        system_instruction=system_msg,
         max_output_tokens=max_completion_tokens,
         stop_sequences=stop,
     )
@@ -374,7 +374,7 @@ def chat_gemini(
     response = client.models.generate_content(
         model=model,
         contents=message,
-        generation_config=generation_config,
+        config=generation_config,
     )
     content = response.text
     return LLMResponse(
@@ -400,7 +400,7 @@ async def chat_gemini_async(
     from google import genai
     from google.genai import types
 
-    client = genai.AsyncClient(
+    client = genai.Client(
         api_key=os.getenv("GOOGLE_GENERATIVEAI_API_KEY"),
     )
     t = time.time()
@@ -414,15 +414,15 @@ async def chat_gemini_async(
 
     generation_config = types.GenerateContentConfig(
         temperature=temperature,
-        system_instructions=system_msg,
+        system_instruction=system_msg,
         max_output_tokens=max_completion_tokens,
         stop_sequences=stop,
     )
 
-    response = await client.models.generate_content(
+    response = await client.aio.models.generate_content(
         model=model,
         contents=message,
-        generation_config=generation_config,
+        config=generation_config,
     )
     content = response.text
     return LLMResponse(
