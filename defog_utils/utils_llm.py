@@ -352,7 +352,7 @@ def chat_gemini(
     from google.genai import types
 
     client = genai.Client(
-        api_key=os.getenv("GOOGLE_GENERATIVEAI_API_KEY", "NOT_SET"),
+        api_key=os.getenv("GEMINI_API_KEY"),
     )
     t = time.time()
     if messages[0]["role"] == "system":
@@ -410,7 +410,7 @@ async def chat_gemini_async(
     from google.genai import types
 
     client = genai.Client(
-        api_key=os.getenv("GOOGLE_GENERATIVEAI_API_KEY", "NOT_SET"),
+        api_key=os.getenv("GEMINI_API_KEY"),
     )
     t = time.time()
     if messages[0]["role"] == "system":
