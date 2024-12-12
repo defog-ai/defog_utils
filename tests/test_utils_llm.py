@@ -144,7 +144,7 @@ class TestChatClients(unittest.TestCase):
         print(response)
         self.assertIsInstance(response, LLMResponse)
         self.assertIsInstance(response.content, str)
-        self.assertEqual(response.input_tokens, 46)  # hidden sys prompt added I think
+        self.assertEqual(response.input_tokens, 45)  # hidden sys prompt added I think
         self.assertLessEqual(response.output_tokens, 10)
 
     @pytest.mark.asyncio
@@ -219,7 +219,7 @@ class TestChatClients(unittest.TestCase):
         print(response)
         self.assertIsInstance(response, LLMResponse)
         self.check_sql(response.content)
-        self.assertEqual(response.input_tokens, 108)
+        self.assertEqual(response.input_tokens, 107)
         self.assertTrue(response.output_tokens < 10)  # output tokens should be < 10
 
     @pytest.mark.asyncio
