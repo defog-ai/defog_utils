@@ -3,7 +3,6 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
 
-
 @dataclass
 class LLMResponse:
     content: Any
@@ -371,12 +370,22 @@ def chat_gemini(
         stop_sequences=stop,
     )
 
+    if response_format:
+        # use Pydantic classes for response_format
+        generation_config.response_mime_type = 'application/json'
+        generation_config.response_schema = response_format
+
     response = client.models.generate_content(
         model=model,
         contents=message,
         config=generation_config,
     )
     content = response.text
+
+    if response_format:
+        # convert the content into Pydantic class
+        content = response_format.parse_raw(content)
+    
     return LLMResponse(
         content=content,
         time=round(time.time() - t, 3),
@@ -419,12 +428,22 @@ async def chat_gemini_async(
         stop_sequences=stop,
     )
 
+    if response_format:
+        # use Pydantic classes for response_format
+        generation_config.response_mime_type = 'application/json'
+        generation_config.response_schema = response_format
+
     response = await client.aio.models.generate_content(
         model=model,
         contents=message,
         config=generation_config,
     )
     content = response.text
+
+    if response_format:
+        # convert the content into Pydantic class
+        content = response_format.parse_raw(content)
+
     return LLMResponse(
         content=content,
         time=round(time.time() - t, 3),
