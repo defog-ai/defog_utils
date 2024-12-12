@@ -13,6 +13,7 @@ from ..defog_utils.utils_llm import (
     chat_openai,
     chat_together,
     chat_anthropic_async,
+    chat_gemini_async,
     chat_openai_async,
     chat_together_async,
 )
@@ -75,8 +76,10 @@ class TestChatClients(unittest.TestCase):
             chat_anthropic_async,
         )
 
-        with self.assertRaises(ValueError):
-            map_model_to_chat_fn_async("gemini-1.5-flash-002")
+        self.assertEqual(
+            map_model_to_chat_fn_async("gemini-1.5-flash-002"),
+            chat_gemini_async,
+        )
 
         self.assertEqual(map_model_to_chat_fn_async("gpt-4o-mini"), chat_openai_async)
         self.assertEqual(
