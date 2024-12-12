@@ -1,5 +1,5 @@
 anthropic==0.40.0
-google-generativeai==0.8.3
+google-genai==0.2.1
 numpy
 openai==1.57.2
 psycopg2-binary==2.9.9

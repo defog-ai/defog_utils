@@ -8,6 +8,7 @@ from .utils_llm import (
     chat_openai,
     chat_together,
     chat_anthropic_async,
+    chat_gemini_async,
     chat_openai_async,
     chat_together_async,
 )
@@ -39,7 +40,7 @@ def map_model_to_chat_fn_async(model: str) -> Callable:
     if model.startswith("claude"):
         return chat_anthropic_async
     if model.startswith("gemini"):
-        raise ValueError("Gemini does not support async chat")
+        return chat_gemini_async
     if model.startswith("gpt") or model.startswith("o1"):
         return chat_openai_async
     if (
