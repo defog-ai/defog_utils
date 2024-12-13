@@ -77,11 +77,9 @@ async def chat_async(
     
     for attempt in range(max_retries):
         try:
-            if attempt == 0:
-                # First attempt, use the original model
-                pass
-            else:
-                # Subsequent attempts, use the backup model
+            if attempt > 0 and backup_model is not None:
+                # For the first attempt, use the original model
+                # For subsequent attempts, use the backup model if it is provided
                 model = backup_model
             return await llm_function(
                 model=model,
