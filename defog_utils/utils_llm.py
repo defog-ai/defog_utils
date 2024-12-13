@@ -367,13 +367,16 @@ def chat_gemini(
         # use Pydantic classes for response_format
         generation_config.response_mime_type = 'application/json'
         generation_config.response_schema = response_format
-
-    response = client.models.generate_content(
-        model=model,
-        contents=message,
-        config=generation_config,
-    )
-    content = response.text
+    
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=message,
+            config=generation_config,
+        )
+        content = response.text
+    except Exception as e:
+        raise Exception(f"An error occurred: {e}")
 
     if response_format:
         # convert the content into Pydantic class
@@ -427,12 +430,15 @@ async def chat_gemini_async(
         generation_config.response_mime_type = 'application/json'
         generation_config.response_schema = response_format
 
-    response = await client.aio.models.generate_content(
-        model=model,
-        contents=message,
-        config=generation_config,
-    )
-    content = response.text
+    try:
+        response = await client.aio.models.generate_content(
+            model=model,
+            contents=message,
+            config=generation_config,
+        )
+        content = response.text
+    except Exception as e:
+        raise Exception(f"An error occurred: {e}")
 
     if response_format:
         # convert the content into Pydantic class

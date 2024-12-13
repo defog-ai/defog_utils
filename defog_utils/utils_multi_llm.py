@@ -96,7 +96,8 @@ async def chat_async(
             )
         except Exception as e:
             delay = base_delay * (2 ** attempt)  # Exponential backoff
-            print(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...")
+            print(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...", flush=True)
+            print(f"Error: {e}", flush=True)
             await asyncio.sleep(delay)
     
     # If we get here, all attempts failed
