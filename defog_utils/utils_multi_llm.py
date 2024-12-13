@@ -64,6 +64,7 @@ async def chat_async(
     seed=0,
     store=True,
     metadata=None,
+    timeout=100, # in seconds
 ) -> LLMResponse:
     """
     Returns the response from the LLM API for a single model that is passed in.
@@ -86,6 +87,7 @@ async def chat_async(
                 seed=seed,
                 store=store,
                 metadata=metadata,
+                timeout=timeout,
             )
         except Exception as e:
             delay = base_delay * (2 ** attempt)  # Exponential backoff
