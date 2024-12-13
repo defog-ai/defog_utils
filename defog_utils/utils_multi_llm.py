@@ -65,6 +65,7 @@ async def chat_async(
     store=True,
     metadata=None,
     timeout=100, # in seconds
+    backup_model=None,
 ) -> LLMResponse:
     """
     Returns the response from the LLM API for a single model that is passed in.
@@ -76,6 +77,12 @@ async def chat_async(
     
     for attempt in range(max_retries):
         try:
+            if attempt == 0:
+                # First attempt, use the original model
+                pass
+            else:
+                # Subsequent attempts, use the backup model
+                model = backup_model
             return await llm_function(
                 model=model,
                 messages=messages,
