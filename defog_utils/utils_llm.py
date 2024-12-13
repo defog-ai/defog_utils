@@ -68,6 +68,7 @@ async def chat_anthropic_async(
     seed: int = 0,
     store=True,
     metadata=None,
+    timeout=100,
 ) -> Optional[LLMResponse]:
     """
     Returns the response from the Anthropic API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -75,7 +76,7 @@ async def chat_anthropic_async(
     """
     from anthropic import AsyncAnthropic
 
-    client_anthropic = AsyncAnthropic()
+    client_anthropic = AsyncAnthropic(timeout=timeout)
     t = time.time()
     if len(messages) >= 1 and messages[0].get("role") == "system":
         sys_msg = messages[0]["content"]
@@ -185,6 +186,7 @@ async def chat_openai_async(
     seed: int = 0,
     store=True,
     metadata=None,
+    timeout=100,
 ) -> Optional[LLMResponse]:
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -192,7 +194,7 @@ async def chat_openai_async(
     """
     from openai import AsyncOpenAI
 
-    client_openai = AsyncOpenAI()
+    client_openai = AsyncOpenAI(timeout=timeout)
     t = time.time()
     if model.startswith("o1"):
         if messages[0].get("role") == "system":
@@ -304,6 +306,7 @@ async def chat_together_async(
     seed: int = 0,
     store=True,
     metadata=None,
+    timeout=100,
 ) -> Optional[LLMResponse]:
     """
     Returns the response from the Together API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -312,7 +315,7 @@ async def chat_together_async(
     """
     from together import AsyncTogether
 
-    client_together = AsyncTogether()
+    client_together = AsyncTogether(timeout=timeout)
     t = time.time()
     response = await client_together.chat.completions.create(
         messages=messages,
@@ -405,6 +408,7 @@ async def chat_gemini_async(
     seed: int = 0,
     store=True,
     metadata=None,
+    timeout=100, # does not have timeout method
 ) -> Optional[LLMResponse]:
     from google import genai
     from google.genai import types
