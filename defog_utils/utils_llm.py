@@ -50,9 +50,7 @@ class LLMResponse:
                 if mname in self.model:
                     potential_model_names.append(mname)
             
-            if len(potential_model_names) == 1:
-                model_name = potential_model_names[0]
-            elif len(potential_model_names) > 1:
+            if len(potential_model_names) > 0:
                 # if there are multiple potential matches, then find the one with the longest prefix
                 model_name = max(potential_model_names, key=len)
         
