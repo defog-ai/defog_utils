@@ -52,7 +52,7 @@ class LLMResponse:
             
             if len(potential_model_names) == 1:
                 model_name = potential_model_names[0]
-            else:
+            elif len(potential_model_names) > 1:
                 # if there are multiple potential matches, then find the one with the longest prefix
                 model_name = max(potential_model_names, key=len)
         
