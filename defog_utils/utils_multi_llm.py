@@ -81,6 +81,7 @@ async def chat_async(
                 # For the first attempt, use the original model
                 # For subsequent attempts, use the backup model if it is provided
                 model = backup_model
+                llm_function = map_model_to_chat_fn_async(model)
             return await llm_function(
                 model=model,
                 messages=messages,
