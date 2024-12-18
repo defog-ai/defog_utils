@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any
 LLM_COSTS_PER_TOKEN = {
     "gpt-4o": {"input_cost_per1k": 0.0025, "output_cost_per1k": 0.01},
     "gpt-4o-mini": {"input_cost_per1k": 0.00015, "output_cost_per1k": 0.0006},
+    "o1": {"input_cost_per1k": 0.015, "output_cost_per1k": 0.06},
     "o1-preview": {"input_cost_per1k": 0.015, "output_cost_per1k": 0.06},
     "o1-mini": {"input_cost_per1k": 0.003, "output_cost_per1k": 0.012},
     "gpt-4-turbo": {"input_cost_per1k": 0.01, "output_cost_per1k": 0.03},
