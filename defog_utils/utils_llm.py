@@ -72,7 +72,6 @@ def chat_anthropic(
     max_completion_tokens: int = 8192,
     temperature: float = 0.0,
     stop: List[str] = [],
-    json_mode: bool = False,
     response_format=None,
     seed: int = 0,
 ) -> LLMResponse:
@@ -116,7 +115,6 @@ async def chat_anthropic_async(
     max_completion_tokens: int = 8192,
     temperature: float = 0.0,
     stop: List[str] = [],
-    json_mode: bool = False,
     response_format=None,
     seed: int = 0,
     store=True,
@@ -164,7 +162,6 @@ def chat_openai(
     max_completion_tokens: int = 16384,
     temperature: float = 0.0,
     stop: List[str] = [],
-    json_mode: bool = False,
     response_format=None,
     seed: int = 0,
 ) -> LLMResponse:
@@ -176,7 +173,7 @@ def chat_openai(
 
     client_openai = OpenAI()
     t = time.time()
-    if model in ["o1-mini", "o1-preview", "o1"]:
+    if model in ["o1-mini", "o1-preview"]:
         if messages[0].get("role") == "system":
             sys_msg = messages[0]["content"]
             messages = messages[1:]
@@ -188,16 +185,14 @@ def chat_openai(
             max_completion_tokens=max_completion_tokens,
         )
     else:
-        if response_format or json_mode:
+        if response_format:
             response = client_openai.beta.chat.completions.parse(
                 messages=messages,
                 model=model,
                 max_completion_tokens=max_completion_tokens,
                 temperature=temperature,
                 stop=stop,
-                response_format=(
-                    {"type": "json_object"} if json_mode else response_format
-                ),
+                response_format=response_format,
                 seed=seed,
             )
         else:
@@ -214,7 +209,7 @@ def chat_openai(
     if len(response.choices) == 0:
         raise Exception("Max tokens reached")
 
-    if response_format and model not in ["o1-mini", "o1-preview", "o1"]:
+    if response_format and model not in ["o1-mini", "o1-preview"]:
         content = response.choices[0].message.parsed
     else:
         content = response.choices[0].message.content
@@ -235,13 +230,11 @@ async def chat_openai_async(
     max_completion_tokens: int = 16384,
     temperature: float = 0.0,
     stop: List[str] = [],
-    json_mode: bool = False,
     response_format=None,
     seed: int = 0,
     store=True,
     metadata=None,
     timeout=100,
-    stream=False,
 ) -> LLMResponse:
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -251,54 +244,43 @@ async def chat_openai_async(
 
     client_openai = AsyncOpenAI()
     t = time.time()
-    # o1 mini and o1 preview do not support streaming or structured outputs
-    if model in ["o1-mini", "o1-preview"]:
+    
+    if model in ["o1-mini", "o1-preview", "o1"]:
+        # remove system prompt
         if messages[0].get("role") == "system":
             sys_msg = messages[0]["content"]
             messages = messages[1:]
             messages[0]["content"] = sys_msg + messages[0]["content"]
-
-        response = await client_openai.chat.completions.create(
-            messages=messages,
-            model=model,
-            max_completion_tokens=max_completion_tokens,
-            store=store,
-            metadata=metadata,
-            timeout=timeout,
-        )
-    else:
-        # if JSON mode is requested, then do not stream the result
-        if response_format or json_mode:
-            response = await client_openai.beta.chat.completions.parse(
-                messages=messages,
-                model=model,
-                max_completion_tokens=max_completion_tokens,
-                temperature=temperature,
-                stop=stop,
-                response_format=(
-                    {"type": "json_object"} if json_mode else response_format
-                ),
-                seed=seed,
-                store=store,
-                metadata=metadata,
-                stream=stream,
-            )
-        else:
-            response = await client_openai.chat.completions.create(
-                messages=messages,
-                model=model,
-                max_completion_tokens=max_completion_tokens,
-                temperature=temperature,
-                stop=stop,
-                seed=seed,
-                store=store,
-                metadata=metadata,
-                stream=stream,
-            )
-
-    if response_format and model not in ["o1-mini", "o1-preview"]:
+    
+    request_params = {
+        "messages": messages,
+        "model": model,
+        "max_completion_tokens": max_completion_tokens,
+        "temperature": temperature,
+        "stop": stop,
+        "seed": seed,
+        "store": store,
+        "metadata": metadata,
+        "timeout": timeout,
+        "response_format": response_format,
+    }
+    
+    if model in ["o1-mini", "o1-preview", "o1"]:
+        del request_params["temperature"]
+    
+    if model in ["o1-mini", "o1-preview"]:
+        del request_params["response_format"]
+    
+    if "response_format" in request_params and request_params["response_format"]:
+        del request_params["stop"] # cannot have stop when using response_format, as that often leads to invalid JSON
+    
+    if "response_format" in request_params and request_params["response_format"]:
+        response = await client_openai.beta.chat.completions.parse(**request_params)
+        print(response)
         content = response.choices[0].message.parsed
     else:
+        response = await client_openai.chat.completions.create(**request_params)
+        print(response)
         content = response.choices[0].message.content
 
     if response.choices[0].finish_reason == "length":
@@ -323,7 +305,6 @@ def chat_together(
     max_completion_tokens: int = 4096,
     temperature: float = 0.0,
     stop: List[str] = [],
-    json_mode: bool = False,
     response_format=None,
     seed: int = 0,
 ) -> LLMResponse:
@@ -363,7 +344,6 @@ async def chat_together_async(
     max_completion_tokens: int = 4096,
     temperature: float = 0.0,
     stop: List[str] = [],
-    json_mode: bool = False,
     response_format=None,
     seed: int = 0,
     store=True,
@@ -406,7 +386,6 @@ def chat_gemini(
     max_completion_tokens: int = 8192,
     temperature: float = 0.0,
     stop: List[str] = [],
-    json_mode: bool = False,
     response_format=None,
     seed: int = 0,
     store=True,
@@ -439,6 +418,8 @@ def chat_gemini(
         generation_config.response_mime_type = "application/json"
         generation_config.response_schema = response_format
 
+        del generation_config.stop_sequences
+
     try:
         response = client.models.generate_content(
             model=model,
@@ -468,7 +449,6 @@ async def chat_gemini_async(
     max_completion_tokens: int = 8192,
     temperature: float = 0.0,
     stop: List[str] = [],
-    json_mode: bool = False,
     response_format=None,
     seed: int = 0,
     store=True,

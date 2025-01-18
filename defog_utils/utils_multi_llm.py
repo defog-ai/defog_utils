@@ -59,14 +59,12 @@ async def chat_async(
     max_completion_tokens=4096,
     temperature=0.0,
     stop=[],
-    json_mode=False,
     response_format=None,
     seed=0,
     store=True,
     metadata=None,
     timeout=100, # in seconds
-    backup_model=None,
-    stream=False,
+    backup_model=None
 ) -> LLMResponse:
     """
     Returns the response from the LLM API for a single model that is passed in.
@@ -75,11 +73,8 @@ async def chat_async(
     llm_function = map_model_to_chat_fn_async(model)
     max_retries = 3
     base_delay = 1  # Initial delay in seconds
-    
-    # we do not support JSON mode or response_format if steaming is enabled
-    if stream:
-        if json_mode is not None or response_format is not None:
-            raise ValueError("JSON mode and response_format are not supported when streaming is enabled.")
+
+    latest_error = None
 
     for attempt in range(max_retries):
         try:
@@ -94,22 +89,21 @@ async def chat_async(
                 max_completion_tokens=max_completion_tokens,
                 temperature=temperature,
                 stop=stop,
-                json_mode=json_mode,
                 response_format=response_format,
                 seed=seed,
                 store=store,
                 metadata=metadata,
                 timeout=timeout,
-                stream=stream,
             )
         except Exception as e:
             delay = base_delay * (2 ** attempt)  # Exponential backoff
             print(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...", flush=True)
             print(f"Error: {e}", flush=True)
+            latest_error = e
             await asyncio.sleep(delay)
     
     # If we get here, all attempts failed
-    raise Exception("All attempts at calling the chat_async function failed")
+    raise Exception("All attempts at calling the chat_async function failed. The latest error was: ", latest_error)
 
 
 def chat(
@@ -118,7 +112,6 @@ def chat(
     max_completion_tokens=4096,
     temperature=0.0,
     stop=[],
-    json_mode=False,
     response_format=None,
     seed=0,
 ) -> Dict[str, LLMResponse]:
@@ -135,7 +128,6 @@ def chat(
                 max_completion_tokens,
                 temperature,
                 stop,
-                json_mode,
                 response_format,
                 seed,
             ): model
