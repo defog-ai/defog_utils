@@ -432,7 +432,7 @@ def chat_gemini(
 
     if response_format:
         # convert the content into Pydantic class
-        content = response_format.parse_raw(content)
+        content = response_format.model_validate_json(content)
 
     return LLMResponse(
         model=model,
@@ -494,7 +494,7 @@ async def chat_gemini_async(
 
     if response_format:
         # convert the content into Pydantic class
-        content = response_format.parse_raw(content)
+        content = response_format.model_validate_json(content)
 
     return LLMResponse(
         model=model,
