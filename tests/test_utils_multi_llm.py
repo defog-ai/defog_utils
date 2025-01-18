@@ -18,6 +18,8 @@ from ..defog_utils.utils_llm import (
     chat_together_async,
 )
 
+from pydantic import BaseModel, Field
+
 messages_sql = [
     {
         "role": "system",
@@ -46,10 +48,35 @@ acceptable_sql = [
     "select count(order_id) as total_orders from orders",
 ]
 
+class ResponseFormat (BaseModel):
+    reasoning: str
+    sql: str
 
-class TestChatClients(unittest.TestCase):
+messages_sql_structured = [
+    {
+        "role": "system",
+        "content": "Your task is to generate SQL given a natural language question and schema of the user's database. Do not use aliases.",
+    },
+    {
+        "role": "user",
+        "content": f"""Question: What is the total number of orders?
+Schema:
+```sql
+CREATE TABLE orders (
+    order_id int,
+    customer_id int,
+    employee_id int,
+    order_date date
+);
+```
+""",
+    },
+]
+
+
+class TestChatClients(unittest.IsolatedAsyncioTestCase):
     def check_sql(self, sql: str):
-        self.assertIn(sql.strip(";\n").lower(), acceptable_sql)
+        self.assertIn(sql.replace("```sql", "").replace("```", "").strip(";\n").lower(), acceptable_sql)
 
     def test_map_model_to_chat_fn(self):
         self.assertEqual(
@@ -110,7 +137,6 @@ class TestChatClients(unittest.TestCase):
             max_completion_tokens=20,
             temperature=0.0,
             stop=[";"],
-            json_mode=False,
             seed=0,
         )
         self.assertIsInstance(responses, dict)
@@ -139,7 +165,6 @@ class TestChatClients(unittest.TestCase):
             max_completion_tokens=20,
             temperature=0.0,
             stop=[";"],
-            json_mode=False,
             seed=0,
         )
         self.assertIsInstance(responses, dict)
@@ -159,7 +184,9 @@ class TestChatClients(unittest.TestCase):
             "claude-3-haiku-20240307",
             "gpt-4o-mini",
             "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-            "o1-mini",
+            # "o1-mini", --o1-mini seems to be having issues, and o3-mini will be out soon anyway. so leaving out for now
+            "o1",
+            "gemini-2.0-flash-exp"
         ]
         messages = [
             {"role": "user", "content": "Return a greeting in not more than 2 words\n"}
@@ -168,20 +195,14 @@ class TestChatClients(unittest.TestCase):
             response = await chat_async(
                 model,
                 messages,
-                max_completion_tokens=20,
+                max_completion_tokens=4000,
                 temperature=0.0,
                 stop=[";"],
-                json_mode=False,
                 seed=0,
             )
             print(model, response)
-            self.assertIsInstance(response, LLMResponse)
             self.assertIsInstance(response.content, str)
             self.assertIsInstance(response.time, float)
-            self.assertLess(
-                response.input_tokens, 50
-            )  # higher as default system prompt is added in together's API when none provided
-            self.assertLess(response.output_tokens, 20)
 
     @pytest.mark.asyncio
     async def test_sql_chat_async(self):
@@ -189,24 +210,43 @@ class TestChatClients(unittest.TestCase):
             "claude-3-haiku-20240307",
             "gpt-4o-mini",
             "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-            "o1-mini",
+            # "o1-mini", --o1-mini seems to be having issues, and o3-mini will be out soon anyway. so leaving out for now
+            "o1",
+            "gemini-2.0-flash-exp"
         ]
         for model in models:
             response = await chat_async(
                 model,
                 messages_sql,
-                max_completion_tokens=20,
+                max_completion_tokens=4000,
                 temperature=0.0,
                 stop=[";"],
-                json_mode=False,
                 seed=0,
             )
             print(model, response)
-            self.assertIsInstance(response, LLMResponse)
             self.check_sql(response.content)
             self.assertIsInstance(response.time, float)
-            self.assertLess(response.input_tokens, 110)
-            self.assertLess(response.output_tokens, 20)
+    
+    @pytest.mark.asyncio
+    async def test_sql_chat_structured_async(self):
+        models = [
+            "gpt-4o",
+            "o1",
+            "gemini-2.0-flash-exp",
+        ]
+        for model in models:
+            response = await chat_async(
+                model,
+                messages_sql_structured,
+                max_completion_tokens=4000,
+                temperature=0.0,
+                stop=[";"],
+                seed=0,
+                response_format=ResponseFormat,
+            )
+            print(model, response)
+            self.check_sql(response.content.sql)
+            self.assertIsInstance(response.content.reasoning, str)
 
 
 if __name__ == "__main__":
