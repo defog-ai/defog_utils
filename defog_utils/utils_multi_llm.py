@@ -76,6 +76,11 @@ async def chat_async(
     max_retries = 3
     base_delay = 1  # Initial delay in seconds
     
+    # we do not support JSON mode or response_format if steaming is enabled
+    if stream:
+        if json_mode is not None or response_format is not None:
+            raise ValueError("JSON mode and response_format are not supported when streaming is enabled.")
+
     for attempt in range(max_retries):
         try:
             if attempt > 0 and backup_model is not None:
