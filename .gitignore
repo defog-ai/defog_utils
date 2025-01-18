@@ -17,3 +17,6 @@ deviant_columns.txt
 matched_columns.txt
 
 build/
+
+# General Mac files
+.DS_Store
