@@ -241,6 +241,7 @@ async def chat_openai_async(
     store=True,
     metadata=None,
     timeout=100,
+    stream=False,
 ) -> LLMResponse:
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -250,7 +251,8 @@ async def chat_openai_async(
 
     client_openai = AsyncOpenAI()
     t = time.time()
-    if model.startswith("o1"):
+    # o1 mini and o1 preview do not support streaming or structured outputs
+    if model in ["o1-mini", "o1-preview"]:
         if messages[0].get("role") == "system":
             sys_msg = messages[0]["content"]
             messages = messages[1:]
@@ -265,6 +267,7 @@ async def chat_openai_async(
             timeout=timeout,
         )
     else:
+        # if JSON mode is requested, then do not stream the result
         if response_format or json_mode:
             response = await client_openai.beta.chat.completions.parse(
                 messages=messages,
@@ -278,6 +281,7 @@ async def chat_openai_async(
                 seed=seed,
                 store=store,
                 metadata=metadata,
+                stream=stream,
             )
         else:
             response = await client_openai.chat.completions.create(
@@ -289,9 +293,10 @@ async def chat_openai_async(
                 seed=seed,
                 store=store,
                 metadata=metadata,
+                stream=stream,
             )
 
-    if response_format and not model.startswith("o1"):
+    if response_format and model not in ["o1-mini", "o1-preview"]:
         content = response.choices[0].message.parsed
     else:
         content = response.choices[0].message.content
