@@ -24,6 +24,8 @@ LLM_COSTS_PER_TOKEN = {
         "input_cost_per1k": 0.000075,
         "output_cost_per1k": 0.0003,
     },
+    "deepseek-chat": {"input_cost_per1k": 0.00014, "output_cost_per1k": 0.00028,},
+    "deepseek-reasoner": {"input_cost_per1k": 0.00055, "output_cost_per1k": 0.00219,},
 }
 
 
