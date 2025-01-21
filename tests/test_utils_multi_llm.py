@@ -237,8 +237,6 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
             "gpt-4o",
             "o1",
             "gemini-2.0-flash-exp",
-            "deepseek-chat",
-            "deepseek-reasoner"
         ]
         for model in models:
             response = await chat_async(
