@@ -186,7 +186,9 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
             "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             # "o1-mini", --o1-mini seems to be having issues, and o3-mini will be out soon anyway. so leaving out for now
             "o1",
-            "gemini-2.0-flash-exp"
+            "gemini-2.0-flash-exp",
+            "deepseek-chat",
+            "deepseek-reasoner"
         ]
         messages = [
             {"role": "user", "content": "Return a greeting in not more than 2 words\n"}
@@ -212,7 +214,9 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
             "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             # "o1-mini", --o1-mini seems to be having issues, and o3-mini will be out soon anyway. so leaving out for now
             "o1",
-            "gemini-2.0-flash-exp"
+            "gemini-2.0-flash-exp",
+            "deepseek-chat",
+            "deepseek-reasoner"
         ]
         for model in models:
             response = await chat_async(
@@ -233,6 +237,8 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
             "gpt-4o",
             "o1",
             "gemini-2.0-flash-exp",
+            "deepseek-chat",
+            "deepseek-reasoner"
         ]
         for model in models:
             response = await chat_async(
