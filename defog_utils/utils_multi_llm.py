@@ -25,6 +25,8 @@ def map_model_to_chat_fn(model: str) -> Callable:
         return chat_gemini
     if model.startswith("gpt") or model.startswith("o1"):
         return chat_openai
+    if model.startswith("deepseek"):
+        return chat_openai
     if (
         model.startswith("meta-llama")
         or model.startswith("mistralai")
@@ -43,6 +45,8 @@ def map_model_to_chat_fn_async(model: str) -> Callable:
     if model.startswith("gemini"):
         return chat_gemini_async
     if model.startswith("gpt") or model.startswith("o1"):
+        return chat_openai_async
+    if model.startswith("deepseek"):
         return chat_openai_async
     if (
         model.startswith("meta-llama")
@@ -83,18 +87,36 @@ async def chat_async(
                 # For subsequent attempts, use the backup model if it is provided
                 model = backup_model
                 llm_function = map_model_to_chat_fn_async(model)
-            return await llm_function(
-                model=model,
-                messages=messages,
-                max_completion_tokens=max_completion_tokens,
-                temperature=temperature,
-                stop=stop,
-                response_format=response_format,
-                seed=seed,
-                store=store,
-                metadata=metadata,
-                timeout=timeout,
-            )
+            if not model.startswith("deepseek"):
+                return await llm_function(
+                    model=model,
+                    messages=messages,
+                    max_completion_tokens=max_completion_tokens,
+                    temperature=temperature,
+                    stop=stop,
+                    response_format=response_format,
+                    seed=seed,
+                    store=store,
+                    metadata=metadata,
+                    timeout=timeout,
+                )
+            else:
+                if not os.getenv("DEEPSEEK_API_KEY"):
+                    raise Exception("DEEPSEEK_API_KEY is not set")
+                return await llm_function(
+                    model=model,
+                    messages=messages,
+                    max_completion_tokens=max_completion_tokens,
+                    temperature=temperature,
+                    stop=stop,
+                    response_format=response_format,
+                    seed=seed,
+                    store=store,
+                    metadata=metadata,
+                    timeout=timeout,
+                    base_url="https://api.deepseek.com",
+                    api_key=os.getenv("DEEPSEEK_API_KEY"),
+                )
         except Exception as e:
             delay = base_delay * (2 ** attempt)  # Exponential backoff
             print(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...", flush=True)
