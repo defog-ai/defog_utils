@@ -164,6 +164,8 @@ def chat_openai(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
+    base_url: str = "https://api.openai.com/v1/",
+    api_key: str = os.environ.get("OPENAI_API_KEY", ""),
 ) -> LLMResponse:
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -171,7 +173,10 @@ def chat_openai(
     """
     from openai import OpenAI
 
-    client_openai = OpenAI()
+    client_openai = OpenAI(
+        base_url=base_url,
+        api_key=api_key
+    )
     t = time.time()
     if model in ["o1-mini", "o1-preview"]:
         if messages[0].get("role") == "system":
@@ -235,6 +240,8 @@ async def chat_openai_async(
     store=True,
     metadata=None,
     timeout=100,
+    base_url: str = "https://api.openai.com/v1/",
+    api_key: str = os.environ.get("OPENAI_API_KEY", ""),
 ) -> LLMResponse:
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -242,10 +249,13 @@ async def chat_openai_async(
     """
     from openai import AsyncOpenAI
 
-    client_openai = AsyncOpenAI()
+    client_openai = AsyncOpenAI(
+        base_url=base_url,
+        api_key=api_key
+    )
     t = time.time()
     
-    if model in ["o1-mini", "o1-preview", "o1"]:
+    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner"]:
         # remove system prompt
         if messages[0].get("role") == "system":
             sys_msg = messages[0]["content"]
@@ -265,10 +275,10 @@ async def chat_openai_async(
         "response_format": response_format,
     }
     
-    if model in ["o1-mini", "o1-preview", "o1"]:
+    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner"]:
         del request_params["temperature"]
     
-    if model in ["o1-mini", "o1-preview"]:
+    if model in ["o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"]:
         del request_params["response_format"]
     
     if "response_format" in request_params and request_params["response_format"]:
