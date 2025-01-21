@@ -24,7 +24,7 @@ def map_model_to_chat_fn(model: str) -> Callable:
         return chat_anthropic
     if model.startswith("gemini"):
         return chat_gemini
-    if model.startswith("gpt") or model.startswith("o1"):
+    if model.startswith("gpt") or model.startswith("o1") or model.startswith("chatgpt"):
         return chat_openai
     if model.startswith("deepseek"):
         return chat_openai
@@ -45,7 +45,7 @@ def map_model_to_chat_fn_async(model: str) -> Callable:
         return chat_anthropic_async
     if model.startswith("gemini"):
         return chat_gemini_async
-    if model.startswith("gpt") or model.startswith("o1"):
+    if model.startswith("gpt") or model.startswith("o1") or model.startswith("chatgpt"):
         return chat_openai_async
     if model.startswith("deepseek"):
         return chat_openai_async

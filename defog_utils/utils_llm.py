@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
 
 LLM_COSTS_PER_TOKEN = {
+    "chatgpt-4o": {"input_cost_per1k": 0.0025, "output_cost_per1k": 0.01},
     "gpt-4o": {"input_cost_per1k": 0.0025, "output_cost_per1k": 0.01},
     "gpt-4o-mini": {"input_cost_per1k": 0.00015, "output_cost_per1k": 0.0006},
     "o1": {"input_cost_per1k": 0.015, "output_cost_per1k": 0.06},
