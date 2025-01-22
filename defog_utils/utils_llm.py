@@ -174,6 +174,7 @@ def chat_openai(
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
     We use max_completion_tokens here, instead of using max_tokens. This is to support o1 models.
+    Note this function also supports DeepSeek models as it uses the same API. Simply use the base URL "https://api.deepseek.com"
     """
     from openai import OpenAI
 
@@ -246,10 +247,12 @@ async def chat_openai_async(
     timeout=100,
     base_url: str = "https://api.openai.com/v1/",
     api_key: str = os.environ.get("OPENAI_API_KEY", ""),
+    prediction: Dict[str,str] = None,
 ) -> LLMResponse:
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
     We use max_completion_tokens here, instead of using max_tokens. This is to support o1 models.
+    Note this function also supports DeepSeek models as it uses the same API. Simply use the base URL "https://api.deepseek.com"
     """
     from openai import AsyncOpenAI
 
@@ -278,6 +281,11 @@ async def chat_openai_async(
         "timeout": timeout,
         "response_format": response_format,
     }
+
+    if model in ["gpt-4o", "gpt-4o-mini"] and prediction:
+        request_params["prediction"] = prediction
+        del request_params["max_completion_tokens"]
+        del request_params["response_format"] # completion with prediction output does not support max_completion_tokens and response_format
     
     if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner"]:
         del request_params["temperature"]
@@ -287,8 +295,6 @@ async def chat_openai_async(
     
     if "response_format" in request_params and request_params["response_format"]:
         del request_params["stop"] # cannot have stop when using response_format, as that often leads to invalid JSON
-    
-    if "response_format" in request_params and request_params["response_format"]:
         response = await client_openai.beta.chat.completions.parse(**request_params)
         content = response.choices[0].message.parsed
     else:

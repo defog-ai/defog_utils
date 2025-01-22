@@ -69,7 +69,8 @@ async def chat_async(
     store=True,
     metadata=None,
     timeout=100, # in seconds
-    backup_model=None
+    backup_model=None,
+    prediction=None
 ) -> LLMResponse:
     """
     Returns the response from the LLM API for a single model that is passed in.
@@ -89,18 +90,32 @@ async def chat_async(
                 model = backup_model
                 llm_function = map_model_to_chat_fn_async(model)
             if not model.startswith("deepseek"):
-                return await llm_function(
-                    model=model,
-                    messages=messages,
-                    max_completion_tokens=max_completion_tokens,
-                    temperature=temperature,
-                    stop=stop,
-                    response_format=response_format,
-                    seed=seed,
-                    store=store,
-                    metadata=metadata,
-                    timeout=timeout,
-                )
+                if prediction and "gpt-4o" in model:
+                    # predicted output completion does not support response_format and max_completion_tokens
+                    return await llm_function(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        stop=stop,
+                        seed=seed,
+                        store=store,
+                        metadata=metadata,
+                        timeout=timeout,
+                        prediction=prediction
+                    )
+                else:
+                    return await llm_function(
+                        model=model,
+                        messages=messages,
+                        max_completion_tokens=max_completion_tokens,
+                        temperature=temperature,
+                        stop=stop,
+                        response_format=response_format,
+                        seed=seed,
+                        store=store,
+                        metadata=metadata,
+                        timeout=timeout,
+                    )
             else:
                 if not os.getenv("DEEPSEEK_API_KEY"):
                     raise Exception("DEEPSEEK_API_KEY is not set")
