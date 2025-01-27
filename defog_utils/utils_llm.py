@@ -416,8 +416,6 @@ def chat_gemini(
     seed: int = 0,
     store=True,
     metadata=None,
-    prediction=None,
-    reasoning_effort=None,
 ) -> LLMResponse:
     from google import genai
     from google.genai import types
@@ -482,6 +480,8 @@ async def chat_gemini_async(
     store=True,
     metadata=None,
     timeout=100,  # does not have timeout method
+    prediction=None,
+    reasoning_effort=None,
 ) -> LLMResponse:
     from google import genai
     from google.genai import types
