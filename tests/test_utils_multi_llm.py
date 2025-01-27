@@ -232,6 +232,29 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
             self.assertIsInstance(response.time, float)
     
     @pytest.mark.asyncio
+    async def test_sql_chat_structured_reasoning_effort_async(self):
+        reasoning_effort = [
+            "low",
+            "medium",
+            "high",
+            None
+        ]
+        for model in models:
+            response = await chat_async(
+                model="o1",
+                messages=messages_sql_structured,
+                max_completion_tokens=4000,
+                temperature=0.0,
+                stop=[";"],
+                seed=0,
+                response_format=ResponseFormat,
+                reasoning_effort=reasoning_effort,
+            )
+            print(model, response)
+            self.check_sql(response.content.sql)
+            self.assertIsInstance(response.content.reasoning, str)
+    
+    @pytest.mark.asyncio
     async def test_sql_chat_structured_async(self):
         models = [
             "gpt-4o",
