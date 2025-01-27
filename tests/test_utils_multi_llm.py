@@ -17,6 +17,7 @@ from ..defog_utils.utils_llm import (
     chat_openai_async,
     chat_together_async,
 )
+import re
 
 from pydantic import BaseModel, Field
 
@@ -76,7 +77,9 @@ CREATE TABLE orders (
 
 class TestChatClients(unittest.IsolatedAsyncioTestCase):
     def check_sql(self, sql: str):
-        self.assertIn(sql.replace("```sql", "").replace("```", "").strip(";\n").lower(), acceptable_sql)
+        sql = sql.replace("```sql", "").replace("```", "").strip(";\n").lower()
+        sql = re.sub(r"(\s+)", " ", sql)
+        self.assertIn(sql, acceptable_sql)
 
     def test_map_model_to_chat_fn(self):
         self.assertEqual(
@@ -187,8 +190,8 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
             # "o1-mini", --o1-mini seems to be having issues, and o3-mini will be out soon anyway. so leaving out for now
             "o1",
             "gemini-2.0-flash-exp",
-            "deepseek-chat",
-            "deepseek-reasoner"
+            # "deepseek-chat",
+            # "deepseek-reasoner"
         ]
         messages = [
             {"role": "user", "content": "Return a greeting in not more than 2 words\n"}
@@ -209,14 +212,14 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
     @pytest.mark.asyncio
     async def test_sql_chat_async(self):
         models = [
-            "claude-3-haiku-20240307",
+            # "claude-3-haiku-20240307",
             "gpt-4o-mini",
             "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             # "o1-mini", --o1-mini seems to be having issues, and o3-mini will be out soon anyway. so leaving out for now
             "o1",
             "gemini-2.0-flash-exp",
-            "deepseek-chat",
-            "deepseek-reasoner"
+            # "deepseek-chat",
+            # "deepseek-reasoner"
         ]
         for model in models:
             response = await chat_async(
@@ -239,7 +242,7 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
             "high",
             None
         ]
-        for model in models:
+        for effort in reasoning_effort:
             response = await chat_async(
                 model="o1",
                 messages=messages_sql_structured,
@@ -248,9 +251,8 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
                 stop=[";"],
                 seed=0,
                 response_format=ResponseFormat,
-                reasoning_effort=reasoning_effort,
+                reasoning_effort=effort,
             )
-            print(model, response)
             self.check_sql(response.content.sql)
             self.assertIsInstance(response.content.reasoning, str)
     

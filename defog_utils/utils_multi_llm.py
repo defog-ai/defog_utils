@@ -91,33 +91,20 @@ async def chat_async(
                 model = backup_model
                 llm_function = map_model_to_chat_fn_async(model)
             if not model.startswith("deepseek"):
-                if prediction and "gpt-4o" in model:
-                    # predicted output completion does not support response_format and max_completion_tokens
-                    return await llm_function(
-                        model=model,
-                        messages=messages,
-                        temperature=temperature,
-                        stop=stop,
-                        seed=seed,
-                        store=store,
-                        metadata=metadata,
-                        timeout=timeout,
-                        prediction=prediction
-                    )
-                else:
-                    return await llm_function(
-                        model=model,
-                        messages=messages,
-                        max_completion_tokens=max_completion_tokens,
-                        temperature=temperature,
-                        stop=stop,
-                        response_format=response_format,
-                        seed=seed,
-                        store=store,
-                        metadata=metadata,
-                        timeout=timeout,
-                        reasoning_effort=reasoning_effort
-                    )
+                return await llm_function(
+                    model=model,
+                    messages=messages,
+                    max_completion_tokens=max_completion_tokens,
+                    temperature=temperature,
+                    stop=stop,
+                    response_format=response_format,
+                    seed=seed,
+                    store=store,
+                    metadata=metadata,
+                    timeout=timeout,
+                    prediction=prediction,
+                    reasoning_effort=reasoning_effort
+                )
             else:
                 if not os.getenv("DEEPSEEK_API_KEY"):
                     raise Exception("DEEPSEEK_API_KEY is not set")
@@ -132,6 +119,8 @@ async def chat_async(
                     store=store,
                     metadata=metadata,
                     timeout=timeout,
+                    prediction=prediction,
+                    reasoning_effort=reasoning_effort,
                     base_url="https://api.deepseek.com",
                     api_key=os.getenv("DEEPSEEK_API_KEY"),
                 )
