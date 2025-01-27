@@ -124,6 +124,8 @@ async def chat_anthropic_async(
     store=True,
     metadata=None,
     timeout=100,
+    prediction=None,
+    reasoning_effort=None,
 ) -> LLMResponse:
     """
     Returns the response from the Anthropic API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -248,6 +250,7 @@ async def chat_openai_async(
     base_url: str = "https://api.openai.com/v1/",
     api_key: str = os.environ.get("OPENAI_API_KEY", ""),
     prediction: Dict[str,str] = None,
+    reasoning_effort=None,
 ) -> LLMResponse:
     """
     Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -292,6 +295,9 @@ async def chat_openai_async(
     
     if model in ["o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"]:
         del request_params["response_format"]
+    
+    if model == "o1" and reasoning_effort is not None:
+        request_params["reasoning_effort"] = reasoning_effort
     
     if "response_format" in request_params and request_params["response_format"]:
         del request_params["stop"] # cannot have stop when using response_format, as that often leads to invalid JSON
@@ -367,6 +373,8 @@ async def chat_together_async(
     store=True,
     metadata=None,
     timeout=100,
+    prediction=None,
+    reasoning_effort=None,
 ) -> LLMResponse:
     """
     Returns the response from the Together API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -408,6 +416,8 @@ def chat_gemini(
     seed: int = 0,
     store=True,
     metadata=None,
+    prediction=None,
+    reasoning_effort=None,
 ) -> LLMResponse:
     from google import genai
     from google.genai import types

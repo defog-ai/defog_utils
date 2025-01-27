@@ -70,7 +70,8 @@ async def chat_async(
     metadata=None,
     timeout=100, # in seconds
     backup_model=None,
-    prediction=None
+    prediction=None,
+    reasoning_effort=None,
 ) -> LLMResponse:
     """
     Returns the response from the LLM API for a single model that is passed in.
@@ -115,6 +116,7 @@ async def chat_async(
                         store=store,
                         metadata=metadata,
                         timeout=timeout,
+                        reasoning_effort=reasoning_effort
                     )
             else:
                 if not os.getenv("DEEPSEEK_API_KEY"):
