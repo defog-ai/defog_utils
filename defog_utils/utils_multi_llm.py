@@ -24,7 +24,7 @@ def map_model_to_chat_fn(model: str) -> Callable:
         return chat_anthropic
     if model.startswith("gemini"):
         return chat_gemini
-    if model.startswith("gpt") or model.startswith("o1") or model.startswith("chatgpt"):
+    if model.startswith("gpt") or model.startswith("o1") or model.startswith("chatgpt") or model.startswith("o3"):
         return chat_openai
     if model.startswith("deepseek"):
         return chat_openai
