@@ -265,7 +265,7 @@ async def chat_openai_async(
     )
     t = time.time()
     
-    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner"]:
+    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner", "o3-mini"]:
         # remove system prompt
         if messages[0].get("role") == "system":
             sys_msg = messages[0]["content"]
@@ -290,7 +290,7 @@ async def chat_openai_async(
         del request_params["max_completion_tokens"]
         del request_params["response_format"] # completion with prediction output does not support max_completion_tokens and response_format
     
-    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner"]:
+    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner", "o3-mini"]:
         del request_params["temperature"]
     
     if model in ["o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"]:
