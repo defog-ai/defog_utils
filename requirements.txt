@@ -1,7 +1,7 @@
 anthropic==0.43.1
 google-genai==0.5.0
 numpy
-openai==1.59.9
+openai==1.61.0
 psycopg2-binary==2.9.9
 sqlglot==25.27.0
 sqlglotrs==0.2.12
