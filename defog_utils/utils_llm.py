@@ -291,13 +291,13 @@ async def chat_openai_async(
         del request_params["max_completion_tokens"]
         del request_params["response_format"] # completion with prediction output does not support max_completion_tokens and response_format
     
-    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner", "o3-mini"]:
+    if model.startswith("o") or model == "deepseek-reasoner":
         del request_params["temperature"]
     
     if model in ["o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"]:
         del request_params["response_format"]
     
-    if model == "o1" and reasoning_effort is not None:
+    if model.startswith("o") and reasoning_effort is not None:
         request_params["reasoning_effort"] = reasoning_effort
     
     if "response_format" in request_params and request_params["response_format"]:
