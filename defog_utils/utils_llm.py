@@ -408,7 +408,7 @@ async def chat_together_async(
 
 def chat_gemini(
     messages: List[Dict[str, str]],
-    model: str = "gemini-2.0-flash-exp",
+    model: str = "gemini-2.0-flash",
     max_completion_tokens: int = 8192,
     temperature: float = 0.0,
     stop: List[str] = [],
@@ -471,7 +471,7 @@ def chat_gemini(
 
 async def chat_gemini_async(
     messages: List[Dict[str, str]],
-    model: str = "gemini-2.0-flash-exp",
+    model: str = "gemini-2.0-flash",
     max_completion_tokens: int = 8192,
     temperature: float = 0.0,
     stop: List[str] = [],
