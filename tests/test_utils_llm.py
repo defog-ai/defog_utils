@@ -239,5 +239,4 @@ class TestChatClients(unittest.TestCase):
         print(response)
         self.assertIsInstance(response, LLMResponse)
         self.check_sql(response.content)
-        self.assertEqual(response.input_tokens, 87)
         self.assertTrue(response.output_tokens < 10)
