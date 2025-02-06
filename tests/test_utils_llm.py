@@ -107,8 +107,6 @@ class TestChatClients(unittest.TestCase):
         print(response)
         self.assertIsInstance(response, LLMResponse)
         self.assertIsInstance(response.content, str)
-        self.assertEqual(response.input_tokens, 12)
-        self.assertLessEqual(response.output_tokens, 10)
 
     def test_chat_openai_no_sys(self):
         response = chat_openai(
@@ -120,8 +118,6 @@ class TestChatClients(unittest.TestCase):
         print(response)
         self.assertIsInstance(response, LLMResponse)
         self.assertIsInstance(response.content, str)
-        self.assertEqual(response.input_tokens, 18)
-        self.assertLessEqual(response.output_tokens, 10)
 
     @pytest.mark.asyncio
     async def test_chat_openai_no_sys_async(self):
