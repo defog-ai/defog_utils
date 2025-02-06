@@ -189,7 +189,7 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
             "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             # "o1-mini", --o1-mini seems to be having issues, and o3-mini will be out soon anyway. so leaving out for now
             "o1",
-            "gemini-2.0-flash-exp",
+            "gemini-2.0-flash",
             # "deepseek-chat",
             # "deepseek-reasoner"
         ]
@@ -217,7 +217,7 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
             "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
             # "o1-mini", --o1-mini seems to be having issues, and o3-mini will be out soon anyway. so leaving out for now
             "o1",
-            "gemini-2.0-flash-exp",
+            "gemini-2.0-flash",
             # "deepseek-chat",
             # "deepseek-reasoner"
         ]
@@ -261,7 +261,7 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
         models = [
             "gpt-4o",
             "o1",
-            "gemini-2.0-flash-exp",
+            "gemini-2.0-flash",
         ]
         for model in models:
             response = await chat_async(
