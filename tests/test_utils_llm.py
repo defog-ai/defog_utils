@@ -11,6 +11,7 @@ from ..defog_utils.utils_llm import (
     chat_openai_async,
     chat_together_async,
 )
+import re
 
 messages_no_sys = [
     {"role": "user", "content": "Return a greeting in not more than 2 words\n"}
@@ -68,6 +69,8 @@ acceptable_sql = [
 class TestChatClients(unittest.TestCase):
 
     def check_sql(self, sql: str):
+        sql = sql.replace("```sql", "").replace("```", "").strip(";\n").lower()
+        sql = re.sub(r"(\s+)", " ", sql)
         self.assertIn(sql.strip(";\n").lower(), acceptable_sql)
 
     def test_chat_anthropic_no_sys(self):
