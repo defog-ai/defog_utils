@@ -22,9 +22,8 @@ LLM_COSTS_PER_TOKEN = {
     "gemini-1.5-flash": {"input_cost_per1k": 0.000075, "output_cost_per1k": 0.0003},
     "gemini-1.5-flash-8b": {"input_cost_per1k": 0.0000375, "output_cost_per1k": 0.00015,},
     "gemini-2.0-flash": {
-        # assume same cost as 1.5
-        "input_cost_per1k": 0.000075,
-        "output_cost_per1k": 0.0003,
+        "input_cost_per1k": 0.00010,
+        "output_cost_per1k": 0.0004,
     },
     "deepseek-chat": {"input_cost_per1k": 0.00014, "output_cost_per1k": 0.00028,},
     "deepseek-reasoner": {"input_cost_per1k": 0.00055, "output_cost_per1k": 0.00219,},
