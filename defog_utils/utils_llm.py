@@ -279,8 +279,6 @@ async def chat_openai_async(
                 if messages[i].get("role") == "user":
                     messages[i]["content"] = sys_msg + "\n" + messages[i]["content"]
                     break
-        
-        print(messages)
     
     request_params = {
         "messages": messages,
