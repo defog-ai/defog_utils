@@ -266,11 +266,20 @@ async def chat_openai_async(
     t = time.time()
     
     if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner", "o3-mini"]:
-        # remove system prompt
-        if messages[0].get("role") == "system":
-            sys_msg = messages[0]["content"]
-            messages = messages[1:]
-            messages[0]["content"] = sys_msg + messages[0]["content"]
+        # find any system message, save its value, and remove it from the list of messages
+        sys_msg = None
+        for i in range(len(messages)):
+            if messages[i].get("role") == "system":
+                sys_msg = messages.pop(i)["content"]
+                break
+        
+        # if system message is not None, then prepend it to the first user message
+        if sys_msg:
+            for i in range(len(messages)):
+                if messages[i].get("role") == "user":
+                    messages[i]["content"] = sys_msg + messages[i]["content"]
+                    break
+            
     
     request_params = {
         "messages": messages,
