@@ -88,7 +88,7 @@ def chat_anthropic(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
-    tools: List[Dict[str, str]] = [],
+    tools: List[Dict[str, str]] = None,
     tool_choice: Union[str, dict] = None,
 ) -> LLMResponse:
     """
@@ -104,16 +104,23 @@ def chat_anthropic(
         messages = messages[1:]
     else:
         sys_msg = ""
-    response = client_anthropic.messages.create(
-        system=sys_msg,
-        messages=messages,
-        model=model,
-        max_tokens=max_completion_tokens,
-        temperature=temperature,
-        stop_sequences=stop,
-        tools=tools,
-        tool_choice=tool_choice,
-    )
+
+    params = {
+        "system": sys_msg,
+        "messages": messages,
+        "model": model,
+        "max_tokens": max_completion_tokens,
+        "temperature": temperature,
+        "stop_sequences": stop,
+    }
+
+    if tools is not None:
+        params["tools"] = tools
+    if tool_choice is not None:
+        params["tool_choice"] = tool_choice
+
+    response = client_anthropic.messages.create(**params)
+
     if response.stop_reason == "max_tokens":
         raise Exception("Max tokens reached")
     if len(response.content) == 0:
@@ -157,7 +164,7 @@ async def chat_anthropic_async(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
-    tools: List[Dict[str, str]] = [],
+    tools: List[Dict[str, str]] = None,
     tool_choice: Union[str, dict] = None,
     store=True,
     metadata=None,
@@ -178,17 +185,24 @@ async def chat_anthropic_async(
         messages = messages[1:]
     else:
         sys_msg = ""
-    response = await client_anthropic.messages.create(
-        system=sys_msg,
-        messages=messages,
-        model=model,
-        max_tokens=max_completion_tokens,
-        temperature=temperature,
-        stop_sequences=stop,
-        timeout=timeout,
-        tools=tools,
-        tool_choice=tool_choice,
-    )
+
+    params = {
+        "system": sys_msg,
+        "messages": messages,
+        "model": model,
+        "max_tokens": max_completion_tokens,
+        "temperature": temperature,
+        "stop_sequences": stop,
+        "timeout": timeout,
+    }
+
+    if tools is not None:
+        params["tools"] = tools
+    if tool_choice is not None:
+        params["tool_choice"] = tool_choice
+
+    response = await client_anthropic.messages.create(**params)
+
     if response.stop_reason == "max_tokens":
         raise Exception("Max tokens reached")
     if len(response.content) == 0:
@@ -246,41 +260,38 @@ def chat_openai(
 
     client_openai = OpenAI(base_url=base_url, api_key=api_key)
     t = time.time()
+
+    params = {
+        "messages": messages,
+        "model": model,
+        "max_completion_tokens": max_completion_tokens,
+        "temperature": temperature,
+        "stop": stop,
+    }
+
+    if tools is not None:
+        params["tools"] = tools
+    if tool_choice is not None:
+        params["tool_choice"] = tool_choice
+
     if model in ["o1-mini", "o1-preview"]:
         if messages[0].get("role") == "system":
             sys_msg = messages[0]["content"]
             messages = messages[1:]
             messages[0]["content"] = sys_msg + messages[0]["content"]
+            params["messages"] = messages
 
-        response = client_openai.chat.completions.create(
-            messages=messages,
-            model=model,
-            max_completion_tokens=max_completion_tokens,
-            tools=tools,
-            tool_choice=tool_choice,
-        )
+        params.pop("stop")
+        params.pop("temperature")
+
+        response = client_openai.chat.completions.create(**params)
     else:
         if response_format:
-            response = client_openai.beta.chat.completions.parse(
-                messages=messages,
-                model=model,
-                max_completion_tokens=max_completion_tokens,
-                temperature=temperature,
-                stop=stop,
-                response_format=response_format,
-                seed=seed,
-            )
+            params["response_format"] = response_format
+            params["seed"] = seed
+            response = client_openai.beta.chat.completions.parse(**params)
         else:
-            response = client_openai.chat.completions.create(
-                messages=messages,
-                model=model,
-                max_completion_tokens=max_completion_tokens,
-                temperature=temperature,
-                stop=stop,
-                seed=seed,
-                tools=tools,
-                tool_choice=tool_choice,
-            )
+            response = client_openai.chat.completions.create(**params)
     if response.choices[0].finish_reason == "length":
         raise Exception("Max tokens reached")
     if len(response.choices) == 0:
@@ -375,9 +386,12 @@ async def chat_openai_async(
         "metadata": metadata,
         "timeout": timeout,
         "response_format": response_format,
-        "tools": tools,
-        "tool_choice": tool_choice,
     }
+
+    if tools is not None:
+        request_params["tools"] = tools
+    if tool_choice is not None:
+        request_params["tool_choice"] = tool_choice
 
     if model in ["gpt-4o", "gpt-4o-mini"] and prediction:
         request_params["prediction"] = prediction
