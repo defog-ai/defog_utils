@@ -24,7 +24,12 @@ def map_model_to_chat_fn(model: str) -> Callable:
         return chat_anthropic
     if model.startswith("gemini"):
         return chat_gemini
-    if model.startswith("gpt") or model.startswith("o1") or model.startswith("chatgpt") or model.startswith("o3"):
+    if (
+        model.startswith("gpt")
+        or model.startswith("o1")
+        or model.startswith("chatgpt")
+        or model.startswith("o3")
+    ):
         return chat_openai
     if model.startswith("deepseek"):
         return chat_openai
@@ -45,7 +50,12 @@ def map_model_to_chat_fn_async(model: str) -> Callable:
         return chat_anthropic_async
     if model.startswith("gemini"):
         return chat_gemini_async
-    if model.startswith("gpt") or model.startswith("o1") or model.startswith("chatgpt") or model.startswith("o3"):
+    if (
+        model.startswith("gpt")
+        or model.startswith("o1")
+        or model.startswith("chatgpt")
+        or model.startswith("o3")
+    ):
         return chat_openai_async
     if model.startswith("deepseek"):
         return chat_openai_async
@@ -68,10 +78,12 @@ async def chat_async(
     seed=0,
     store=True,
     metadata=None,
-    timeout=100, # in seconds
+    timeout=100,  # in seconds
     backup_model=None,
     prediction=None,
     reasoning_effort=None,
+    tools=None,
+    tool_choice=None,
 ) -> LLMResponse:
     """
     Returns the response from the LLM API for a single model that is passed in.
@@ -99,11 +111,13 @@ async def chat_async(
                     stop=stop,
                     response_format=response_format,
                     seed=seed,
+                    tools=tools,
+                    tool_choice=tool_choice,
                     store=store,
                     metadata=metadata,
                     timeout=timeout,
                     prediction=prediction,
-                    reasoning_effort=reasoning_effort
+                    reasoning_effort=reasoning_effort,
                 )
             else:
                 if not os.getenv("DEEPSEEK_API_KEY"):
@@ -125,14 +139,20 @@ async def chat_async(
                     api_key=os.getenv("DEEPSEEK_API_KEY"),
                 )
         except Exception as e:
-            delay = base_delay * (2 ** attempt)  # Exponential backoff
-            print(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...", flush=True)
+            delay = base_delay * (2**attempt)  # Exponential backoff
+            print(
+                f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...",
+                flush=True,
+            )
             print(f"Error: {e}", flush=True)
             latest_error = e
             await asyncio.sleep(delay)
-    
+
     # If we get here, all attempts failed
-    raise Exception("All attempts at calling the chat_async function failed. The latest error was: ", latest_error)
+    raise Exception(
+        "All attempts at calling the chat_async function failed. The latest error was: ",
+        latest_error,
+    )
 
 
 def chat(
@@ -143,6 +163,8 @@ def chat(
     stop=[],
     response_format=None,
     seed=0,
+    tools=None,
+    tool_choice=None,
 ) -> Dict[str, LLMResponse]:
     """
     Returns the response from the LLM API for each of the models passed in.
@@ -159,6 +181,8 @@ def chat(
                 stop,
                 response_format,
                 seed,
+                tools,
+                tool_choice,
             ): model
             for model in models
         }

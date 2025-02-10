@@ -1,7 +1,8 @@
 import os
 import time
+import json
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 LLM_COSTS_PER_TOKEN = {
     "chatgpt-4o": {"input_cost_per1k": 0.0025, "output_cost_per1k": 0.01},
@@ -20,13 +21,22 @@ LLM_COSTS_PER_TOKEN = {
     "claude-3-haiku": {"input_cost_per1k": 0.00025, "output_cost_per1k": 0.00125},
     "gemini-1.5-pro": {"input_cost_per1k": 0.00125, "output_cost_per1k": 0.005},
     "gemini-1.5-flash": {"input_cost_per1k": 0.000075, "output_cost_per1k": 0.0003},
-    "gemini-1.5-flash-8b": {"input_cost_per1k": 0.0000375, "output_cost_per1k": 0.00015,},
+    "gemini-1.5-flash-8b": {
+        "input_cost_per1k": 0.0000375,
+        "output_cost_per1k": 0.00015,
+    },
     "gemini-2.0-flash": {
         "input_cost_per1k": 0.00010,
         "output_cost_per1k": 0.0004,
     },
-    "deepseek-chat": {"input_cost_per1k": 0.00014, "output_cost_per1k": 0.00028,},
-    "deepseek-reasoner": {"input_cost_per1k": 0.00055, "output_cost_per1k": 0.00219,},
+    "deepseek-chat": {
+        "input_cost_per1k": 0.00014,
+        "output_cost_per1k": 0.00028,
+    },
+    "deepseek-reasoner": {
+        "input_cost_per1k": 0.00055,
+        "output_cost_per1k": 0.00219,
+    },
 }
 
 
@@ -53,11 +63,11 @@ class LLMResponse:
             for mname in LLM_COSTS_PER_TOKEN.keys():
                 if mname in self.model:
                     potential_model_names.append(mname)
-            
+
             if len(potential_model_names) > 0:
                 # if there are multiple potential matches, then find the one with the longest prefix
                 model_name = max(potential_model_names, key=len)
-        
+
         if model_name:
             self.cost_in_cents = (
                 self.input_tokens
@@ -78,6 +88,8 @@ def chat_anthropic(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
+    tools: List[Dict[str, str]] = [],
+    tool_choice: Union[str, dict] = None,
 ) -> LLMResponse:
     """
     Returns the response from the Anthropic API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -99,14 +111,38 @@ def chat_anthropic(
         max_tokens=max_completion_tokens,
         temperature=temperature,
         stop_sequences=stop,
+        tools=tools,
+        tool_choice=tool_choice,
     )
     if response.stop_reason == "max_tokens":
         raise Exception("Max tokens reached")
     if len(response.content) == 0:
         raise Exception("Max tokens reached")
+
+    from anthropic.types import ToolUseBlock, TextBlock
+
+    tool_calls = []
+    message_text = ""
+    for block in response.content:
+        if isinstance(block, ToolUseBlock):
+            tool_calls.append(
+                {
+                    "tool_name": block.name,
+                    "tool_arguments": block.input,
+                    "tool_id": block.id,
+                }
+            )
+        elif isinstance(block, TextBlock):
+            message_text = block.text
+
+    if tool_calls != []:
+        content = {"tool_calls": tool_calls, "message_text": message_text}
+    else:
+        content = message_text
+
     return LLMResponse(
         model=model,
-        content=response.content[0].text,
+        content=content,
         time=round(time.time() - t, 3),
         input_tokens=response.usage.input_tokens,
         output_tokens=response.usage.output_tokens,
@@ -121,6 +157,8 @@ async def chat_anthropic_async(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
+    tools: List[Dict[str, str]] = [],
+    tool_choice: Union[str, dict] = None,
     store=True,
     metadata=None,
     timeout=100,
@@ -147,15 +185,39 @@ async def chat_anthropic_async(
         max_tokens=max_completion_tokens,
         temperature=temperature,
         stop_sequences=stop,
-        timeout=timeout
+        timeout=timeout,
+        tools=tools,
+        tool_choice=tool_choice,
     )
     if response.stop_reason == "max_tokens":
         raise Exception("Max tokens reached")
     if len(response.content) == 0:
         raise Exception("Max tokens reached")
+
+    from anthropic.types import ToolUseBlock, TextBlock
+
+    tool_calls = []
+    message_text = ""
+    for block in response.content:
+        if isinstance(block, ToolUseBlock):
+            tool_calls.append(
+                {
+                    "tool_name": block.name,
+                    "tool_arguments": block.input,
+                    "tool_id": block.id,
+                }
+            )
+        elif isinstance(block, TextBlock):
+            message_text = block.text
+
+    if tool_calls != []:
+        content = {"tool_calls": tool_calls, "message_text": message_text}
+    else:
+        content = message_text
+
     return LLMResponse(
         model=model,
-        content=response.content[0].text,
+        content=content,
         time=round(time.time() - t, 3),
         input_tokens=response.usage.input_tokens,
         output_tokens=response.usage.output_tokens,
@@ -170,6 +232,8 @@ def chat_openai(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
+    tools: List[Dict[str, str]] = None,
+    tool_choice: str = None,
     base_url: str = "https://api.openai.com/v1/",
     api_key: str = os.environ.get("OPENAI_API_KEY", ""),
 ) -> LLMResponse:
@@ -180,10 +244,7 @@ def chat_openai(
     """
     from openai import OpenAI
 
-    client_openai = OpenAI(
-        base_url=base_url,
-        api_key=api_key
-    )
+    client_openai = OpenAI(base_url=base_url, api_key=api_key)
     t = time.time()
     if model in ["o1-mini", "o1-preview"]:
         if messages[0].get("role") == "system":
@@ -195,6 +256,8 @@ def chat_openai(
             messages=messages,
             model=model,
             max_completion_tokens=max_completion_tokens,
+            tools=tools,
+            tool_choice=tool_choice,
         )
     else:
         if response_format:
@@ -215,6 +278,8 @@ def chat_openai(
                 temperature=temperature,
                 stop=stop,
                 seed=seed,
+                tools=tools,
+                tool_choice=tool_choice,
             )
     if response.choices[0].finish_reason == "length":
         raise Exception("Max tokens reached")
@@ -223,6 +288,19 @@ def chat_openai(
 
     if response_format and model not in ["o1-mini", "o1-preview"]:
         content = response.choices[0].message.parsed
+    elif response.choices[0].message.tool_calls:
+        message = response.choices[0].message
+        content = {
+            "tool_calls": [
+                {
+                    "tool_name": tool_call.function.name,
+                    "tool_arguments": json.loads(tool_call.function.arguments),
+                    "tool_id": tool_call.id,
+                }
+                for tool_call in message.tool_calls
+            ],
+            "message_text": message.content,
+        }
     else:
         content = response.choices[0].message.content
 
@@ -244,12 +322,14 @@ async def chat_openai_async(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
+    tools: List[Dict[str, str]] = None,
+    tool_choice: str = None,
     store=True,
     metadata=None,
     timeout=100,
     base_url: str = "https://api.openai.com/v1/",
     api_key: str = os.environ.get("OPENAI_API_KEY", ""),
-    prediction: Dict[str,str] = None,
+    prediction: Dict[str, str] = None,
     reasoning_effort=None,
 ) -> LLMResponse:
     """
@@ -259,27 +339,31 @@ async def chat_openai_async(
     """
     from openai import AsyncOpenAI
 
-    client_openai = AsyncOpenAI(
-        base_url=base_url,
-        api_key=api_key
-    )
+    client_openai = AsyncOpenAI(base_url=base_url, api_key=api_key)
     t = time.time()
-    
-    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner", "o3-mini"]:
+
+    if model in [
+        "o1-mini",
+        "o1-preview",
+        "o1",
+        "deepseek-chat",
+        "deepseek-reasoner",
+        "o3-mini",
+    ]:
         # find any system message, save its value, and remove it from the list of messages
         sys_msg = None
         for i in range(len(messages)):
             if messages[i].get("role") == "system":
                 sys_msg = messages.pop(i)["content"]
                 break
-        
+
         # if system message is not None, then prepend it to the first user message
         if sys_msg:
             for i in range(len(messages)):
                 if messages[i].get("role") == "user":
                     messages[i]["content"] = sys_msg + "\n" + messages[i]["content"]
                     break
-    
+
     request_params = {
         "messages": messages,
         "model": model,
@@ -291,29 +375,49 @@ async def chat_openai_async(
         "metadata": metadata,
         "timeout": timeout,
         "response_format": response_format,
+        "tools": tools,
+        "tool_choice": tool_choice,
     }
 
     if model in ["gpt-4o", "gpt-4o-mini"] and prediction:
         request_params["prediction"] = prediction
         del request_params["max_completion_tokens"]
-        del request_params["response_format"] # completion with prediction output does not support max_completion_tokens and response_format
-    
+        del request_params[
+            "response_format"
+        ]  # completion with prediction output does not support max_completion_tokens and response_format
+
     if model.startswith("o") or model == "deepseek-reasoner":
         del request_params["temperature"]
-    
+
     if model in ["o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"]:
         del request_params["response_format"]
-    
+
     if model.startswith("o") and reasoning_effort is not None:
         request_params["reasoning_effort"] = reasoning_effort
-    
+
     if "response_format" in request_params and request_params["response_format"]:
-        del request_params["stop"] # cannot have stop when using response_format, as that often leads to invalid JSON
+        del request_params[
+            "stop"
+        ]  # cannot have stop when using response_format, as that often leads to invalid JSON
         response = await client_openai.beta.chat.completions.parse(**request_params)
         content = response.choices[0].message.parsed
     else:
         response = await client_openai.chat.completions.create(**request_params)
-        content = response.choices[0].message.content
+        if response.choices[0].message.tool_calls:
+            message = response.choices[0].message
+            content = {
+                "tool_calls": [
+                    {
+                        "tool_name": tool_call.function.name,
+                        "tool_arguments": json.loads(tool_call.function.arguments),
+                        "tool_id": tool_call.id,
+                    }
+                    for tool_call in message.tool_calls
+                ],
+                "message_text": message.content,
+            }
+        else:
+            content = response.choices[0].message.content
 
     if response.choices[0].finish_reason == "length":
         print("Max tokens reached")
@@ -339,6 +443,8 @@ def chat_together(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
+    tools=None,
+    tool_choice=None,
 ) -> LLMResponse:
     """
     Returns the response from the Together API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
@@ -378,6 +484,8 @@ async def chat_together_async(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
+    tools=None,
+    tool_choice=None,
     store=True,
     metadata=None,
     timeout=100,
@@ -422,6 +530,8 @@ def chat_gemini(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
+    tools=None,
+    tool_choice=None,
     store=True,
     metadata=None,
 ) -> LLMResponse:
@@ -485,6 +595,8 @@ async def chat_gemini_async(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
+    tools=None,
+    tool_choice=None,
     store=True,
     metadata=None,
     timeout=100,  # does not have timeout method
