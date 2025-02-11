@@ -114,9 +114,9 @@ def chat_anthropic(
         "stop_sequences": stop,
     }
 
-    if tools is not None:
+    if tools:
         params["tools"] = tools
-    if tool_choice is not None:
+    if tool_choice:
         params["tool_choice"] = tool_choice
 
     response = client_anthropic.messages.create(**params)
@@ -196,9 +196,9 @@ async def chat_anthropic_async(
         "timeout": timeout,
     }
 
-    if tools is not None:
+    if tools:
         params["tools"] = tools
-    if tool_choice is not None:
+    if tool_choice:
         params["tool_choice"] = tool_choice
 
     response = await client_anthropic.messages.create(**params)
@@ -269,9 +269,9 @@ def chat_openai(
         "stop": stop,
     }
 
-    if tools is not None:
+    if tools:
         params["tools"] = tools
-    if tool_choice is not None:
+    if tool_choice:
         params["tool_choice"] = tool_choice
 
     if model in ["o1-mini", "o1-preview"]:
@@ -388,9 +388,9 @@ async def chat_openai_async(
         "response_format": response_format,
     }
 
-    if tools is not None:
+    if tools:
         request_params["tools"] = tools
-    if tool_choice is not None:
+    if tool_choice:
         request_params["tool_choice"] = tool_choice
 
     if model in ["gpt-4o", "gpt-4o-mini"] and prediction:
