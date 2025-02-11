@@ -2,6 +2,7 @@ import os
 import time
 import json
 from dataclasses import dataclass
+from pydantic import BaseModel
 from typing import Dict, List, Optional, Any, Union
 from enum import Enum
 
