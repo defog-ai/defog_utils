@@ -3,6 +3,7 @@ import time
 import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any, Union
+from enum import Enum
 
 LLM_COSTS_PER_TOKEN = {
     "chatgpt-4o": {"input_cost_per1k": 0.0025, "output_cost_per1k": 0.01},
@@ -237,6 +238,20 @@ async def chat_anthropic_async(
         output_tokens=response.usage.output_tokens,
     )
 
+class OpenAIToolChoice(Enum):
+    AUTO = "auto" # default if not provided. calls 0, 1, or multiple functions
+    REQUIRED = "required" # calls atleast 1 function
+    NONE = "none" # calls no functions
+
+class OpenAIFunction(BaseModel):
+    name: str # name of the function to call
+    description: Optional[str] = None # description of the function
+    parameters: Optional[Union[str, Dict[str, Any]]] = None # parameters of the function
+
+class OpenAIForcedFunction(BaseModel):
+    # a forced function call - forces a call to one specific function
+    type: str = "function"
+    function: OpenAIFunction
 
 def chat_openai(
     messages: List[Dict[str, str]],
@@ -246,8 +261,8 @@ def chat_openai(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
-    tools: List[Dict[str, str]] = None,
-    tool_choice: str = None,
+    tools: List[OpenAIFunction] = None,
+    tool_choice: Union[OpenAIToolChoice, OpenAIForcedFunction] = None,
     base_url: str = "https://api.openai.com/v1/",
     api_key: str = os.environ.get("OPENAI_API_KEY", ""),
 ) -> LLMResponse:
@@ -333,8 +348,8 @@ async def chat_openai_async(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
-    tools: List[Dict[str, str]] = None,
-    tool_choice: str = None,
+    tools: List[OpenAIFunction] = None,
+    tool_choice: Union[OpenAIToolChoice, OpenAIForcedFunction] = None,
     store=True,
     metadata=None,
     timeout=100,
