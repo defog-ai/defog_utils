@@ -29,6 +29,9 @@ def clean_html_text(html_text):
 
 DEFOG_API_KEY = os.environ.get("DEFOG_API_KEY")
 
+if DEFOG_API_KEY is None:
+    raise ValueError("DEFOG_API_KEY is not set, the search test cannot be run")
+
 class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
     @pytest.mark.asyncio
     async def test_tool_use_arithmetic(self):
