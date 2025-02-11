@@ -2,9 +2,9 @@ import os
 import time
 import json
 from dataclasses import dataclass
-from pydantic import BaseModel
-from typing import Dict, List, Optional, Any, Union
-from enum import Enum
+from typing import Dict, List, Optional, Any, Union, Callable
+from .models import OpenAIToolChoice, OpenAIFunction, OpenAIForcedFunction
+from .utils_function_calling import get_function_specs, execute_tool
 
 LLM_COSTS_PER_TOKEN = {
     "chatgpt-4o": {"input_cost_per1k": 0.0025, "output_cost_per1k": 0.01},
@@ -239,21 +239,6 @@ async def chat_anthropic_async(
         output_tokens=response.usage.output_tokens,
     )
 
-class OpenAIToolChoice(Enum):
-    AUTO = "auto" # default if not provided. calls 0, 1, or multiple functions
-    REQUIRED = "required" # calls atleast 1 function
-    NONE = "none" # calls no functions
-
-class OpenAIFunction(BaseModel):
-    name: str # name of the function to call
-    description: Optional[str] = None # description of the function
-    parameters: Optional[Union[str, Dict[str, Any]]] = None # parameters of the function
-
-class OpenAIForcedFunction(BaseModel):
-    # a forced function call - forces a call to one specific function
-    type: str = "function"
-    function: OpenAIFunction
-
 def chat_openai(
     messages: List[Dict[str, str]],
     model: str = "gpt-4o",
@@ -262,7 +247,7 @@ def chat_openai(
     stop: List[str] = [],
     response_format=None,
     seed: int = 0,
-    tools: List[OpenAIFunction] = None,
+    tools: List[Callable] = None,
     tool_choice: Union[OpenAIToolChoice, OpenAIForcedFunction] = None,
     base_url: str = "https://api.openai.com/v1/",
     api_key: str = os.environ.get("OPENAI_API_KEY", ""),
@@ -285,49 +270,105 @@ def chat_openai(
         "stop": stop,
     }
 
-    if tools:
-        params["tools"] = tools
-    if tool_choice:
-        params["tool_choice"] = tool_choice
+    if response_format and tools:
+        raise Exception("Cannot specify both response_format and tools, since Structured Outputs are incompatible with tool use.")
 
-    if model in ["o1-mini", "o1-preview"]:
-        if messages[0].get("role") == "system":
-            sys_msg = messages[0]["content"]
-            messages = messages[1:]
-            messages[0]["content"] = sys_msg + messages[0]["content"]
-            params["messages"] = messages
+    if tools and len(tools) > 0 and model not in [
+        "o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"
+    ]:
+        # convert tools to OpenAI format
+        function_specs = get_function_specs(tools)
+        params["tools"] = function_specs
+        
+        # this dictionary maps the tool name to the actual tool
+        tool_dict = {}
+        tool_dict = {tool.__name__: tool for tool in tools}
+    
+        if tool_choice:
+            params["tool_choice"] = tool_choice
+        
+        # disable parallel tool calls, since we want to chain tool calls together
+        params["parallel_tool_calls"] = False
+
+    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner", "o3-mini"]:
+        # find any system message, save its value, and remove it from the list of messages
+        sys_msg = None
+        for i in range(len(messages)):
+            if messages[i].get("role") == "system":
+                sys_msg = messages.pop(i)["content"]
+                break
+
+        # if system message is not None, then prepend it to the first user message
+        if sys_msg:
+            for i in range(len(messages)):
+                if messages[i].get("role") == "user":
+                    messages[i]["content"] = sys_msg + "\n" + messages[i]["content"]
+                    break
+        
+        params["messages"] = messages
 
         params.pop("stop")
         params.pop("temperature")
+    
+    if model.startswith("o") or model == "deepseek-reasoner":
+        params.pop("temperature")
+    
+    if model in ["o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"]:
+        params.pop("response_format")
 
-        response = client_openai.chat.completions.create(**params)
+    if model.startswith("o") and reasoning_effort is not None:
+        params["reasoning_effort"] = reasoning_effort
+
+    if params.get("response_format"):
+        params["response_format"] = response_format
+        params["seed"] = seed
+        del params["stop"] # cannot have stop when using response_format, as that often leads to invalid JSON
+        response = client_openai.beta.chat.completions.parse(**params)
     else:
-        if response_format:
-            params["response_format"] = response_format
-            params["seed"] = seed
-            response = client_openai.beta.chat.completions.parse(**params)
-        else:
-            response = client_openai.chat.completions.create(**params)
+        response = client_openai.chat.completions.create(**params)
+    
     if response.choices[0].finish_reason == "length":
         raise Exception("Max tokens reached")
     if len(response.choices) == 0:
-        raise Exception("Max tokens reached")
+        raise Exception("Some error occurred")
+    
+    if tools and len(tools) > 0:
+        final_answer = None
 
-    if response_format and model not in ["o1-mini", "o1-preview"]:
+        # Loop to handle dynamic chaining of tool calls.
+        while True:
+            # while True looks scary, but is actually quite safe
+            message = response.choices[0].message
+
+            # If the model requests a tool call, execute it.
+            if message.get("tool_calls"):
+                tool_call = message.tool_calls[0]
+                func_name = tool_call.function.name
+                try:
+                    args = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    args = {}
+
+                print(f"Calling function {func_name} with arguments: {args}")
+                tool_to_call = tool_dict[func_name]
+                result = execute_tool(tool_to_call, args)
+                print(f"Result from {func_name}: {result}")
+
+                # Append the tool call and its result to the conversation history.
+                params["messages"].append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result
+                })
+
+                # Make the next API call including the new message with the tool result.
+                response = client_openai.chat.completions.create(**params)
+            else:
+                # No further function calls; extract the final answer.
+                content = message.get("content", "")
+                break
+    elif params.get("response_format") and model not in ["o1-mini", "o1-preview"]:
         content = response.choices[0].message.parsed
-    elif response.choices[0].message.tool_calls:
-        message = response.choices[0].message
-        content = {
-            "tool_calls": [
-                {
-                    "tool_name": tool_call.function.name,
-                    "tool_arguments": json.loads(tool_call.function.arguments),
-                    "tool_id": tool_call.id,
-                }
-                for tool_call in message.tool_calls
-            ],
-            "message_text": message.content,
-        }
     else:
         content = response.choices[0].message.content
 
@@ -404,10 +445,22 @@ async def chat_openai_async(
         "response_format": response_format,
     }
 
-    if tools:
-        request_params["tools"] = tools
-    if tool_choice:
-        request_params["tool_choice"] = tool_choice
+    if tools and len(tools) > 0 and model not in [
+        "o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"
+    ]:
+        # convert tools to OpenAI format
+        function_specs = get_function_specs(tools)
+        request_params["tools"] = function_specs
+        
+        # this dictionary maps the tool name to the actual tool
+        tool_dict = {}
+        tool_dict = {tool.__name__: tool for tool in tools}
+    
+        if tool_choice:
+            request_params["tool_choice"] = tool_choice
+        
+        # disable parallel tool calls, since we want to chain tool calls together
+        request_params["parallel_tool_calls"] = False
 
     if model in ["gpt-4o", "gpt-4o-mini"] and prediction:
         request_params["prediction"] = prediction
@@ -449,12 +502,59 @@ async def chat_openai_async(
         else:
             content = response.choices[0].message.content
 
-    if response.choices[0].finish_reason == "length":
-        print("Max tokens reached")
-        raise Exception("Max tokens reached")
-    if len(response.choices) == 0:
-        print("Empty response")
-        raise Exception("No response")
+    if tools and len(tools) > 0:
+        final_answer = None
+
+        # Loop to handle dynamic chaining of tool calls.
+        while True:
+            # while True looks scary, but is actually quite safe
+            message = response.choices[0].message
+
+            # If the model requests a tool call, execute it.
+            if message.tool_calls:
+                tool_call = message.tool_calls[0]
+                func_name = tool_call.function.name
+                try:
+                    args = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    args = {}
+
+                print(f"Calling function {func_name} with arguments: {args}")
+                tool_to_call = tool_dict[func_name]
+                
+                # this is synchronous execution of the tool for now, and will be blocking
+                # in the future, we can make this asynchronous
+                result = execute_tool(tool_to_call, args)
+                print(f"Result from {func_name}: {result}")
+
+                # if result is an int, bool, or float - convert it to string
+                if isinstance(result, (int, bool, float)):
+                    result = str(result)
+                
+                # Append the tool calls as an assistant response
+                request_params["messages"].append({
+                    "role": "assistant",
+                    "tool_calls": message.tool_calls,
+                })
+
+                # Append the tool call and its result to the conversation history.
+                request_params["messages"].append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result
+                })
+
+                # Make the next API call including the new message with the tool result.
+                response = await client_openai.chat.completions.create(**request_params)
+            else:
+                # No further function calls; extract the final answer.
+                content = message.content
+                break
+    elif request_params.get("response_format") and model not in ["o1-mini", "o1-preview"]:
+        content = response.choices[0].message.parsed
+    else:
+        content = response.choices[0].message.content
+
     return LLMResponse(
         model=model,
         content=content,
