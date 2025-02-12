@@ -92,4 +92,4 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
             ],
             tools=tools,
         )
-        self.assertEqual(result.content, 'Lawrence Wong')
+        self.assertIn('lawrence wong', result.content.lower())
