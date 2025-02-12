@@ -1,12 +1,21 @@
 import unittest
 import pytest
-from ..defog_utils.utils_multi_llm import chat_async
-from ..defog_utils.utils_llm import chat_openai
+from ..defog_utils.utils_multi_llm import chat_async, chat
+from ..defog_utils.utils_llm import chat_anthropic, chat_openai
 from pydantic import BaseModel
 import httpx
 import os
 
 from bs4 import BeautifulSoup
+
+DEFOG_API_KEY = os.environ.get("DEFOG_API_KEY")
+
+if DEFOG_API_KEY is None:
+    raise ValueError("DEFOG_API_KEY is not set, the search test cannot be run")
+
+# ==================================================================================================
+# Functions for function calling
+# ==================================================================================================
 
 def clean_html_text(html_text):
     """
@@ -28,11 +37,6 @@ def clean_html_text(html_text):
     
     return cleaned_text
 
-DEFOG_API_KEY = os.environ.get("DEFOG_API_KEY")
-
-if DEFOG_API_KEY is None:
-    raise ValueError("DEFOG_API_KEY is not set, the search test cannot be run")
-
 class SearchInput(BaseModel):
     query: str = ""
 
@@ -49,62 +53,90 @@ async def search(input: SearchInput):
         r = await client.get(first_result_link)
     return clean_html_text(r.text)
 
-class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
-    @pytest.mark.asyncio
-    async def test_tool_use_arithmetic(self):
-        class Numbers(BaseModel):
+class Numbers(BaseModel):
             a: int = 0
             b: int = 0
 
-        def numsum(input: Numbers):
-            """
-            This function return the sum of two numbers
-            """
-            return input.a + input.b
+def numsum(input: Numbers):
+    """
+    This function return the sum of two numbers
+    """
+    return input.a + input.b
 
-        def numprod(input: Numbers):
-            """
-            This function return the product of two numbers
-            """
-            return input.a * input.b
+def numprod(input: Numbers):
+    """
+    This function return the product of two numbers
+    """
+    return input.a * input.b
 
-        tools = [numsum, numprod]
+# ==================================================================================================
+# Tests
+# ==================================================================================================
+class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+
+        self.tools = [search, numsum, numprod]
+        self.search_qn = "Who is the Prime Minister of Singapore right now (in 2025)? Recall that the current year is 2025. Return your answer as a single phrase."
+        self.search_answer = "lawrence wong"
+
+        self.arithmetic_qn = "What is the product of 31283 and 2323, added to 5? Return only the final answer, nothing else."
+        self.arithmetic_answer = '72670414'
+
+    @pytest.mark.asyncio
+    async def test_tool_use_arithmetic_async_openai(self):
+        tools = self.tools
 
         result = await chat_async(
             model="gpt-4o",
             messages=[
                 {
                     "role": "user",
-                    "content": "What is the product of 31283 and 2323, added to 5? Return only the final answer, nothing else.",},
+                    "content": self.arithmetic_qn,},
             ],
             tools=tools,
         )
-        self.assertEqual(result.content, '72670414')
+        self.assertEqual(result.content, self.arithmetic_answer)
 
     @pytest.mark.asyncio
-    async def test_tool_use_async_search(self):
-        tools = [search]
+    async def test_tool_use_search_async_openai(self):
+        tools = self.tools
         result = await chat_async(
             model="gpt-4o",
             messages=[
                 {
                     "role": "user",
-                    "content": "Who is the Prime Minister of Singapore right now (in 2025)? Recall that the current year is 2025. Return your answer as a single phrase.",},
+                    "content": self.search_qn,},
             ],
             tools=tools,
             max_retries=1,
         )
-        self.assertIn('lawrence wong', result.content.lower())
+        self.assertIn(self.search_answer, result.content.lower())
     
-    def test_async_tool_in_sync_function(self):
-        tools = [search]
-        result = chat_openai(
+
+    def test_async_tool_in_sync_function_openai(self):
+        tools = self.tools
+        result_openai = chat_openai(
             model="gpt-4o",
             messages=[
                 {
                     "role": "user",
-                    "content": "Who is the Prime Minister of Singapore right now (in 2025)? Recall that the current year is 2025. Return your answer as a single phrase.",},
+                    "content": self.search_qn,
+                },
             ],
             tools=tools,
         )
-        self.assertIn('lawrence wong', result.content.lower())
+        self.assertIn(self.search_answer, result_openai.content.lower())
+
+    def test_async_tool_in_sync_function_anthropic(self):
+        tools = self.tools
+        result_anthropic = chat_anthropic(
+            model="claude-3-5-sonnet-20241022",
+            messages=[
+                {
+                    "role": "user",
+                    "content": self.search_qn,
+                },
+            ],
+            tools=tools,
+        )
+        self.assertIn(self.search_answer, result_anthropic.content.lower())
