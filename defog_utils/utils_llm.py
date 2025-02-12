@@ -76,16 +76,22 @@ class LLMResponse:
 
         if model_name:
             self.cost_in_cents = (
-                self.input_tokens / 1000 * LLM_COSTS_PER_TOKEN[model_name]["input_cost_per1k"]
-                + self.output_tokens / 1000 * LLM_COSTS_PER_TOKEN[model_name]["output_cost_per1k"]
+                self.input_tokens
+                / 1000
+                * LLM_COSTS_PER_TOKEN[model_name]["input_cost_per1k"]
+                + self.output_tokens
+                / 1000
+                * LLM_COSTS_PER_TOKEN[model_name]["output_cost_per1k"]
                 * 100
             )
+
 
 #
 # --------------------------------------------------------------------------------
 # 1) ANTHROPIC
 # --------------------------------------------------------------------------------
 #
+
 
 def _build_anthropic_params(
     messages: List[Dict[str, str]],
@@ -315,6 +321,7 @@ async def chat_anthropic_async(
 # --------------------------------------------------------------------------------
 #
 
+
 def _build_openai_params(
     messages: List[Dict[str, str]],
     model: str,
@@ -368,13 +375,18 @@ def _build_openai_params(
     }
 
     # Tools are only supported for certain models
-    if tools and len(tools) > 0 and model not in [
-        "o1-mini",
-        "o1-preview",
-        "deepseek-chat",
-        "deepseek-reasoner",
-    ]:
-        function_specs = get_function_specs(tools)
+    if (
+        tools
+        and len(tools) > 0
+        and model
+        not in [
+            "o1-mini",
+            "o1-preview",
+            "deepseek-chat",
+            "deepseek-reasoner",
+        ]
+    ):
+        function_specs = get_function_specs(tools, model)
         request_params["tools"] = function_specs
         if tool_choice:
             request_params["tool_choice"] = tool_choice
@@ -444,7 +456,7 @@ def _process_openai_response_sync(
                 # check if tool_to_call is async, by seeing if it has `await ` anywhere in its code
                 tool_source = inspect.getsource(tool_to_call)
                 # Define the regex pattern
-                pattern = r'\s+await\s+'
+                pattern = r"\s+await\s+"
                 matches = re.findall(pattern, tool_source)
                 if any(match for match in matches):
                     result = asyncio.run(execute_tool_async(tool_to_call, args))
@@ -452,10 +464,12 @@ def _process_openai_response_sync(
                     result = execute_tool(tool_to_call, args)
 
                 # Append the tool calls as an assistant response
-                request_params["messages"].append({
-                    "role": "assistant",
-                    "tool_calls": message.tool_calls,
-                })
+                request_params["messages"].append(
+                    {
+                        "role": "assistant",
+                        "tool_calls": message.tool_calls,
+                    }
+                )
 
                 # Append the tool message
                 request_params["messages"].append(
@@ -466,9 +480,7 @@ def _process_openai_response_sync(
                     }
                 )
                 # Make next call
-                response = client.chat.completions.create(
-                    **request_params
-                )
+                response = client.chat.completions.create(**request_params)
             else:
                 content = message.content
                 break
@@ -480,7 +492,13 @@ def _process_openai_response_sync(
             content = response.choices[0].message.content
 
     usage = response.usage
-    return content, usage.prompt_tokens, usage.completion_tokens, usage.completion_tokens_details
+    return (
+        content,
+        usage.prompt_tokens,
+        usage.completion_tokens,
+        usage.completion_tokens_details,
+    )
+
 
 async def _process_openai_response_async(
     client,
@@ -517,11 +535,11 @@ async def _process_openai_response_async(
                     tool_to_call = tool_dict[func_name]
                 except KeyError:
                     raise Exception(f"Tool `{func_name}` not found.")
-                
+
                 # check if tool_to_call is async, by seeing if it has `await ` anywhere in its code
                 tool_source = inspect.getsource(tool_to_call)
                 # Define the regex pattern
-                pattern = r'\s+await\s+'
+                pattern = r"\s+await\s+"
                 matches = re.findall(pattern, tool_source)
                 if any(match for match in matches):
                     result = await execute_tool_async(tool_to_call, args)
@@ -529,10 +547,12 @@ async def _process_openai_response_async(
                     result = execute_tool(tool_to_call, args)
 
                 # Append the tool calls as an assistant response
-                request_params["messages"].append({
-                    "role": "assistant",
-                    "tool_calls": message.tool_calls,
-                })
+                request_params["messages"].append(
+                    {
+                        "role": "assistant",
+                        "tool_calls": message.tool_calls,
+                    }
+                )
 
                 # Append the tool message
                 request_params["messages"].append(
@@ -543,9 +563,7 @@ async def _process_openai_response_async(
                     }
                 )
                 # Make next call
-                response = await client.chat.completions.create(
-                    **request_params
-                )
+                response = await client.chat.completions.create(**request_params)
             else:
                 content = message.content
                 break
@@ -557,8 +575,12 @@ async def _process_openai_response_async(
             content = response.choices[0].message.content
 
     usage = response.usage
-    return content, usage.prompt_tokens, usage.completion_tokens, usage.completion_tokens_details
-
+    return (
+        content,
+        usage.prompt_tokens,
+        usage.completion_tokens,
+        usage.completion_tokens_details,
+    )
 
 
 def chat_openai(
@@ -612,14 +634,16 @@ def chat_openai(
     else:
         response = client_openai.chat.completions.create(**request_params)
 
-    content, prompt_tokens, output_tokens, completion_token_details = _process_openai_response_sync(
-        client=client_openai,
-        response=response,
-        request_params=request_params,
-        tools=tools,
-        tool_dict=tool_dict,
-        response_format=response_format,
-        model=model,
+    content, prompt_tokens, output_tokens, completion_token_details = (
+        _process_openai_response_sync(
+            client=client_openai,
+            response=response,
+            request_params=request_params,
+            tools=tools,
+            tool_dict=tool_dict,
+            response_format=response_format,
+            model=model,
+        )
     )
 
     return LLMResponse(
@@ -676,21 +700,23 @@ async def chat_openai_async(
     tool_dict = {}
     if tools and len(tools) > 0 and "tools" in request_params:
         tool_dict = {tool.__name__: tool for tool in tools}
-    
+
     # If response_format is set, we do parse
     if request_params.get("response_format"):
         response = await client_openai.beta.chat.completions.parse(**request_params)
     else:
         response = await client_openai.chat.completions.create(**request_params)
 
-    content, prompt_tokens, output_tokens, completion_token_details = await _process_openai_response_async(
-        client=client_openai,
-        response=response,
-        request_params=request_params,
-        tools=tools,
-        tool_dict=tool_dict,
-        response_format=response_format,
-        model=model
+    content, prompt_tokens, output_tokens, completion_token_details = (
+        await _process_openai_response_async(
+            client=client_openai,
+            response=response,
+            request_params=request_params,
+            tools=tools,
+            tool_dict=tool_dict,
+            response_format=response_format,
+            model=model,
+        )
     )
 
     return LLMResponse(
@@ -702,11 +728,13 @@ async def chat_openai_async(
         output_tokens_details=completion_token_details,
     )
 
+
 #
 # --------------------------------------------------------------------------------
 # 3) TOGETHER
 # --------------------------------------------------------------------------------
 #
+
 
 def _build_together_params(
     messages: List[Dict[str, str]],
@@ -814,11 +842,13 @@ async def chat_together_async(
         output_tokens=output_toks,
     )
 
+
 #
 # --------------------------------------------------------------------------------
 # 4) GEMINI
 # --------------------------------------------------------------------------------
 #
+
 
 def _build_gemini_params(
     messages: List[Dict[str, str]],
@@ -898,11 +928,17 @@ def chat_gemini(
     )
 
     try:
-        response = client.models.generate_content(model=model, contents=message, config=types.GenerateContentConfig(**generation_cfg))
+        response = client.models.generate_content(
+            model=model,
+            contents=message,
+            config=types.GenerateContentConfig(**generation_cfg),
+        )
     except Exception as e:
         raise Exception(f"An error occurred: {e}")
 
-    content, input_toks, output_toks = _process_gemini_response(response, response_format)
+    content, input_toks, output_toks = _process_gemini_response(
+        response, response_format
+    )
     return LLMResponse(
         model=model,
         content=content,
@@ -955,7 +991,9 @@ async def chat_gemini_async(
     except Exception as e:
         raise Exception(f"An error occurred: {e}")
 
-    content, input_toks, output_toks = _process_gemini_response(response, response_format)
+    content, input_toks, output_toks = _process_gemini_response(
+        response, response_format
+    )
     return LLMResponse(
         model=model,
         content=content,
