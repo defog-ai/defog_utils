@@ -75,11 +75,11 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
             messages=[
                 {
                     "role": "user",
-                    "content": "What is the product of 3 and 15, added to 5? Return only the final answer, nothing else.",},
+                    "content": "What is the product of 31283 and 2323, added to 5? Return only the final answer, nothing else.",},
             ],
             tools=tools,
         )
-        self.assertEqual(result.content, '50')
+        self.assertEqual(result.content, '72670414')
 
     @pytest.mark.asyncio
     async def test_tool_use_async_search(self):
