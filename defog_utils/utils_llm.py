@@ -3,6 +3,7 @@ import time
 import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any, Union, Callable
+
 from .models import OpenAIToolChoice, OpenAIFunction, OpenAIForcedFunction
 from .utils_function_calling import get_function_specs, execute_tool
 
@@ -56,51 +57,39 @@ class LLMResponse:
         if self.model in LLM_COSTS_PER_TOKEN:
             model_name = self.model
         else:
-            # if there is no exact match (for example, if the model name is "gpt-4o-2024-08-06")
-            # then try to find the closest match
+            # Attempt partial matches if no exact match
             model_name = None
             potential_model_names = []
-
-            # first, find all the models that have a matching prefix
             for mname in LLM_COSTS_PER_TOKEN.keys():
                 if mname in self.model:
                     potential_model_names.append(mname)
-
             if len(potential_model_names) > 0:
-                # if there are multiple potential matches, then find the one with the longest prefix
                 model_name = max(potential_model_names, key=len)
 
         if model_name:
             self.cost_in_cents = (
-                self.input_tokens
-                / 1000
-                * LLM_COSTS_PER_TOKEN[model_name]["input_cost_per1k"]
-                + self.output_tokens
-                / 1000
-                * LLM_COSTS_PER_TOKEN[model_name]["output_cost_per1k"]
+                self.input_tokens / 1000 * LLM_COSTS_PER_TOKEN[model_name]["input_cost_per1k"]
+                + self.output_tokens / 1000 * LLM_COSTS_PER_TOKEN[model_name]["output_cost_per1k"]
                 * 100
             )
 
+#
+# --------------------------------------------------------------------------------
+# 1) ANTHROPIC
+# --------------------------------------------------------------------------------
+#
 
-def chat_anthropic(
+def _build_anthropic_params(
     messages: List[Dict[str, str]],
-    model: str = "claude-3-5-sonnet-20241022",
-    max_completion_tokens: int = 8192,
-    temperature: float = 0.0,
-    stop: List[str] = [],
-    response_format=None,
-    seed: int = 0,
+    model: str,
+    max_completion_tokens: int,
+    temperature: float,
+    stop: List[str],
     tools: List[Dict[str, str]] = None,
     tool_choice: Union[str, dict] = None,
-) -> LLMResponse:
-    """
-    Returns the response from the Anthropic API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
-    Note that anthropic doesn't have explicit json mode api constraints, nor does it have a seed parameter.
-    """
-    from anthropic import Anthropic
-
-    client_anthropic = Anthropic()
-    t = time.time()
+    timeout=100,
+):
+    """Create the parameter dict for Anthropic's .messages.create()."""
     if len(messages) >= 1 and messages[0].get("role") == "system":
         sys_msg = messages[0]["content"]
         messages = messages[1:]
@@ -114,21 +103,24 @@ def chat_anthropic(
         "max_tokens": max_completion_tokens,
         "temperature": temperature,
         "stop_sequences": stop,
+        "timeout": timeout,
     }
-
     if tools:
         params["tools"] = tools
     if tool_choice:
         params["tool_choice"] = tool_choice
 
-    response = client_anthropic.messages.create(**params)
+    return params, messages  # returning updated messages in case we want them
+
+
+def _process_anthropic_response(response):
+    """Extract content (including any tool calls) and usage info from Anthropic response."""
+    from anthropic.types import ToolUseBlock, TextBlock
 
     if response.stop_reason == "max_tokens":
         raise Exception("Max tokens reached")
     if len(response.content) == 0:
         raise Exception("Max tokens reached")
-
-    from anthropic.types import ToolUseBlock, TextBlock
 
     tool_calls = []
     message_text = ""
@@ -149,12 +141,43 @@ def chat_anthropic(
     else:
         content = message_text
 
+    return content, response.usage.input_tokens, response.usage.output_tokens
+
+
+def chat_anthropic(
+    messages: List[Dict[str, str]],
+    model: str = "claude-3-5-sonnet-20241022",
+    max_completion_tokens: int = 8192,
+    temperature: float = 0.0,
+    stop: List[str] = [],
+    response_format=None,
+    seed: int = 0,
+    tools: List[Dict[str, str]] = None,
+    tool_choice: Union[str, dict] = None,
+):
+    """Synchronous Anthropic chat."""
+    from anthropic import Anthropic
+
+    t = time.time()
+    client = Anthropic()
+    params, _ = _build_anthropic_params(
+        messages=messages,
+        model=model,
+        max_completion_tokens=max_completion_tokens,
+        temperature=temperature,
+        stop=stop,
+        tools=tools,
+        tool_choice=tool_choice,
+    )
+    response = client.messages.create(**params)
+    content, input_toks, output_toks = _process_anthropic_response(response)
+
     return LLMResponse(
         model=model,
         content=content,
         time=round(time.time() - t, 3),
-        input_tokens=response.usage.input_tokens,
-        output_tokens=response.usage.output_tokens,
+        input_tokens=input_toks,
+        output_tokens=output_toks,
     )
 
 
@@ -173,71 +196,260 @@ async def chat_anthropic_async(
     timeout=100,
     prediction=None,
     reasoning_effort=None,
-) -> LLMResponse:
-    """
-    Returns the response from the Anthropic API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
-    Note that anthropic doesn't have explicit json mode api constraints, nor does it have a seed parameter.
-    """
+):
+    """Asynchronous Anthropic chat."""
     from anthropic import AsyncAnthropic
 
-    client_anthropic = AsyncAnthropic()
     t = time.time()
-    if len(messages) >= 1 and messages[0].get("role") == "system":
-        sys_msg = messages[0]["content"]
-        messages = messages[1:]
-    else:
-        sys_msg = ""
-
-    params = {
-        "system": sys_msg,
-        "messages": messages,
-        "model": model,
-        "max_tokens": max_completion_tokens,
-        "temperature": temperature,
-        "stop_sequences": stop,
-        "timeout": timeout,
-    }
-
-    if tools:
-        params["tools"] = tools
-    if tool_choice:
-        params["tool_choice"] = tool_choice
-
-    response = await client_anthropic.messages.create(**params)
-
-    if response.stop_reason == "max_tokens":
-        raise Exception("Max tokens reached")
-    if len(response.content) == 0:
-        raise Exception("Max tokens reached")
-
-    from anthropic.types import ToolUseBlock, TextBlock
-
-    tool_calls = []
-    message_text = ""
-    for block in response.content:
-        if isinstance(block, ToolUseBlock):
-            tool_calls.append(
-                {
-                    "tool_name": block.name,
-                    "tool_arguments": block.input,
-                    "tool_id": block.id,
-                }
-            )
-        elif isinstance(block, TextBlock):
-            message_text = block.text
-
-    if tool_calls != []:
-        content = {"tool_calls": tool_calls, "message_text": message_text}
-    else:
-        content = message_text
+    client = AsyncAnthropic()
+    params, _ = _build_anthropic_params(
+        messages=messages,
+        model=model,
+        max_completion_tokens=max_completion_tokens,
+        temperature=temperature,
+        stop=stop,
+        tools=tools,
+        tool_choice=tool_choice,
+    )
+    response = await client.messages.create(**params)
+    content, input_toks, output_toks = _process_anthropic_response(response)
 
     return LLMResponse(
         model=model,
         content=content,
         time=round(time.time() - t, 3),
-        input_tokens=response.usage.input_tokens,
-        output_tokens=response.usage.output_tokens,
+        input_tokens=input_toks,
+        output_tokens=output_toks,
     )
+
+
+#
+# --------------------------------------------------------------------------------
+# 2) OPENAI
+# --------------------------------------------------------------------------------
+#
+
+def _build_openai_params(
+    messages: List[Dict[str, str]],
+    model: str,
+    max_completion_tokens: int,
+    temperature: float,
+    stop: List[str],
+    response_format=None,
+    seed: int = 0,
+    tools: List[Callable] = None,
+    tool_choice: Union[OpenAIToolChoice, OpenAIForcedFunction] = None,
+    prediction=None,
+    reasoning_effort=None,
+    store=True,
+    metadata=None,
+    timeout=100,
+):
+    """
+    Build the parameter dictionary for OpenAI's chat.completions.create().
+    Also handles special logic for o1-mini, o1-preview, deepseek-chat, etc.
+    """
+    # Potentially move system message to user message for certain model families:
+    if model in [
+        "o1-mini",
+        "o1-preview",
+        "o1",
+        "deepseek-chat",
+        "deepseek-reasoner",
+        "o3-mini",
+    ]:
+        sys_msg = None
+        for i in range(len(messages)):
+            if messages[i].get("role") == "system":
+                sys_msg = messages.pop(i)["content"]
+                break
+        if sys_msg:
+            for i in range(len(messages)):
+                if messages[i].get("role") == "user":
+                    messages[i]["content"] = sys_msg + "\n" + messages[i]["content"]
+                    break
+
+    request_params = {
+        "messages": messages,
+        "model": model,
+        "max_completion_tokens": max_completion_tokens,
+        "temperature": temperature,
+        "stop": stop,
+        "seed": seed,
+        "store": store,
+        "metadata": metadata,
+        "timeout": timeout,
+    }
+
+    # Tools are only supported for certain models
+    if tools and len(tools) > 0 and model not in [
+        "o1-mini",
+        "o1-preview",
+        "deepseek-chat",
+        "deepseek-reasoner",
+    ]:
+        function_specs = get_function_specs(tools)
+        request_params["tools"] = function_specs
+        if tool_choice:
+            request_params["tool_choice"] = tool_choice
+        request_params["parallel_tool_calls"] = False
+
+    # Some models do not allow temperature or response_format:
+    if model.startswith("o") or model == "deepseek-reasoner":
+        request_params.pop("temperature", None)
+    if model in ["o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"]:
+        request_params.pop("response_format", None)
+
+    # Reasoning effort
+    if model.startswith("o") and reasoning_effort is not None:
+        request_params["reasoning_effort"] = reasoning_effort
+
+    # Special case: model in ["gpt-4o", "gpt-4o-mini"] with `prediction`
+    if model in ["gpt-4o", "gpt-4o-mini"] and prediction is not None:
+        request_params["prediction"] = prediction
+        request_params.pop("max_completion_tokens", None)
+        request_params.pop("response_format", None)
+
+    # Finally, set response_format if still relevant:
+    if response_format:
+        request_params["response_format"] = response_format
+        # cannot have stop when using response_format
+        request_params.pop("stop", None)
+
+    return request_params
+
+
+def _process_openai_response_sync(
+    client,
+    response,
+    request_params,
+    tools: List[Callable] = None,
+    tool_dict: Dict[str, Callable] = None,
+    response_format=None,
+    model=None,
+):
+    """
+    For sync calls:
+      - Possibly chain tool calls in a loop
+      - Return final content
+    """
+    if len(response.choices) == 0:
+        raise Exception("No response from OpenAI.")
+    if response.choices[0].finish_reason == "length":
+        raise Exception("Max tokens reached")
+
+    # If we have tools, handle dynamic chaining:
+    if tools and len(tools) > 0:
+        while True:
+            message = response.choices[0].message
+            if message.tool_calls:
+                tool_call = message.tool_calls[0]
+                func_name = tool_call.function.name
+                try:
+                    args = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    args = {}
+
+                tool_to_call = tool_dict[func_name]
+                result = execute_tool(tool_to_call, args)
+
+                # Append the tool calls as an assistant response
+                request_params["messages"].append({
+                    "role": "assistant",
+                    "tool_calls": message.tool_calls,
+                })
+
+                # Append the tool message
+                request_params["messages"].append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": str(result),
+                    }
+                )
+                # Make next call
+                response = client.chat.completions.create(
+                    **request_params
+                )
+            else:
+                content = message.content
+                break
+    else:
+        # No tool chaining
+        if response_format and model not in ["o1-mini", "o1-preview"]:
+            content = response.choices[0].message.parsed
+        else:
+            content = response.choices[0].message.content
+
+    usage = response.usage
+    return content, usage.prompt_tokens, usage.completion_tokens, usage.completion_tokens_details
+
+async def _process_openai_response_async(
+    client,
+    response,
+    request_params,
+    tools: List[Callable] = None,
+    tool_dict: Dict[str, Callable] = None,
+    response_format=None,
+    model=None,
+):
+    """
+    For sync calls:
+      - Possibly chain tool calls in a loop
+      - Return final content
+    """
+    if len(response.choices) == 0:
+        raise Exception("No response from OpenAI.")
+    if response.choices[0].finish_reason == "length":
+        raise Exception("Max tokens reached")
+
+    # If we have tools, handle dynamic chaining:
+    if tools and len(tools) > 0:
+        while True:
+            message = response.choices[0].message
+            if message.tool_calls:
+                tool_call = message.tool_calls[0]
+                func_name = tool_call.function.name
+                try:
+                    args = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    args = {}
+
+                tool_to_call = tool_dict[func_name]
+                result = execute_tool(tool_to_call, args)
+
+                # Append the tool calls as an assistant response
+                request_params["messages"].append({
+                    "role": "assistant",
+                    "tool_calls": message.tool_calls,
+                })
+
+                # Append the tool message
+                request_params["messages"].append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": str(result),
+                    }
+                )
+                # Make next call
+                response = await client.chat.completions.create(
+                    **request_params
+                )
+            else:
+                content = message.content
+                break
+    else:
+        # No tool chaining
+        if response_format and model not in ["o1-mini", "o1-preview"]:
+            content = response.choices[0].message.parsed
+        else:
+            content = response.choices[0].message.content
+
+    usage = response.usage
+    return content, usage.prompt_tokens, usage.completion_tokens, usage.completion_tokens_details
+
+
 
 def chat_openai(
     messages: List[Dict[str, str]],
@@ -251,134 +463,62 @@ def chat_openai(
     tool_choice: Union[OpenAIToolChoice, OpenAIForcedFunction] = None,
     base_url: str = "https://api.openai.com/v1/",
     api_key: str = os.environ.get("OPENAI_API_KEY", ""),
-) -> LLMResponse:
-    """
-    Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
-    We use max_completion_tokens here, instead of using max_tokens. This is to support o1 models.
-    Note this function also supports DeepSeek models as it uses the same API. Simply use the base URL "https://api.deepseek.com"
-    """
+    prediction=None,
+    reasoning_effort=None,
+    store=True,
+    metadata=None,
+    timeout=100,
+):
+    """Synchronous OpenAI chat."""
     from openai import OpenAI
 
-    client_openai = OpenAI(base_url=base_url, api_key=api_key)
     t = time.time()
+    client_openai = OpenAI(base_url=base_url, api_key=api_key)
+    request_params = _build_openai_params(
+        messages=messages,
+        model=model,
+        max_completion_tokens=max_completion_tokens,
+        temperature=temperature,
+        stop=stop,
+        response_format=response_format,
+        seed=seed,
+        tools=tools,
+        tool_choice=tool_choice,
+        store=store,
+        metadata=metadata,
+        timeout=timeout,
+        prediction=prediction,
+        reasoning_effort=reasoning_effort,
+    )
 
-    params = {
-        "messages": messages,
-        "model": model,
-        "max_completion_tokens": max_completion_tokens,
-        "temperature": temperature,
-        "stop": stop,
-    }
-
-    if response_format and tools:
-        raise Exception("Cannot specify both response_format and tools, since Structured Outputs are incompatible with tool use.")
-
-    if tools and len(tools) > 0 and model not in [
-        "o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"
-    ]:
-        # convert tools to OpenAI format
-        function_specs = get_function_specs(tools)
-        params["tools"] = function_specs
-        
-        # this dictionary maps the tool name to the actual tool
-        tool_dict = {}
+    # Construct a tool dict if needed
+    tool_dict = {}
+    if tools and len(tools) > 0 and "tools" in request_params:
         tool_dict = {tool.__name__: tool for tool in tools}
-    
-        if tool_choice:
-            params["tool_choice"] = tool_choice
-        
-        # disable parallel tool calls, since we want to chain tool calls together
-        params["parallel_tool_calls"] = False
 
-    if model in ["o1-mini", "o1-preview", "o1", "deepseek-chat", "deepseek-reasoner", "o3-mini"]:
-        # find any system message, save its value, and remove it from the list of messages
-        sys_msg = None
-        for i in range(len(messages)):
-            if messages[i].get("role") == "system":
-                sys_msg = messages.pop(i)["content"]
-                break
-
-        # if system message is not None, then prepend it to the first user message
-        if sys_msg:
-            for i in range(len(messages)):
-                if messages[i].get("role") == "user":
-                    messages[i]["content"] = sys_msg + "\n" + messages[i]["content"]
-                    break
-        
-        params["messages"] = messages
-
-        params.pop("stop")
-        params.pop("temperature")
-    
-    if model.startswith("o") or model == "deepseek-reasoner":
-        params.pop("temperature")
-    
-    if model in ["o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"]:
-        params.pop("response_format")
-
-    if model.startswith("o") and reasoning_effort is not None:
-        params["reasoning_effort"] = reasoning_effort
-
-    if params.get("response_format"):
-        params["response_format"] = response_format
-        params["seed"] = seed
-        del params["stop"] # cannot have stop when using response_format, as that often leads to invalid JSON
-        response = client_openai.beta.chat.completions.parse(**params)
+    # If response_format is set, we do parse
+    if request_params.get("response_format"):
+        response = client_openai.beta.chat.completions.parse(**request_params)
     else:
-        response = client_openai.chat.completions.create(**params)
-    
-    if response.choices[0].finish_reason == "length":
-        raise Exception("Max tokens reached")
-    if len(response.choices) == 0:
-        raise Exception("Some error occurred")
-    
-    if tools and len(tools) > 0:
-        final_answer = None
+        response = client_openai.chat.completions.create(**request_params)
 
-        # Loop to handle dynamic chaining of tool calls.
-        while True:
-            # while True looks scary, but is actually quite safe
-            message = response.choices[0].message
-
-            # If the model requests a tool call, execute it.
-            if message.get("tool_calls"):
-                tool_call = message.tool_calls[0]
-                func_name = tool_call.function.name
-                try:
-                    args = json.loads(tool_call.function.arguments)
-                except json.JSONDecodeError:
-                    args = {}
-
-                print(f"Calling function {func_name} with arguments: {args}")
-                tool_to_call = tool_dict[func_name]
-                result = execute_tool(tool_to_call, args)
-                print(f"Result from {func_name}: {result}")
-
-                # Append the tool call and its result to the conversation history.
-                params["messages"].append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result
-                })
-
-                # Make the next API call including the new message with the tool result.
-                response = client_openai.chat.completions.create(**params)
-            else:
-                # No further function calls; extract the final answer.
-                content = message.get("content", "")
-                break
-    elif params.get("response_format") and model not in ["o1-mini", "o1-preview"]:
-        content = response.choices[0].message.parsed
-    else:
-        content = response.choices[0].message.content
+    content, prompt_tokens, output_tokens, completion_token_details = _process_openai_response_sync(
+        client=client_openai,
+        response=response,
+        request_params=request_params,
+        tools=tools,
+        tool_dict=tool_dict,
+        response_format=response_format,
+        model=model,
+    )
 
     return LLMResponse(
         model=model,
         content=content,
         time=round(time.time() - t, 3),
-        input_tokens=response.usage.prompt_tokens,
-        output_tokens=response.usage.completion_tokens,
-        output_tokens_details=response.usage.completion_tokens_details,
+        input_tokens=prompt_tokens,
+        output_tokens=output_tokens,
+        output_tokens_details=completion_token_details,
     )
 
 
@@ -399,169 +539,92 @@ async def chat_openai_async(
     api_key: str = os.environ.get("OPENAI_API_KEY", ""),
     prediction: Dict[str, str] = None,
     reasoning_effort=None,
-) -> LLMResponse:
-    """
-    Returns the response from the OpenAI API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
-    We use max_completion_tokens here, instead of using max_tokens. This is to support o1 models.
-    Note this function also supports DeepSeek models as it uses the same API. Simply use the base URL "https://api.deepseek.com"
-    """
+):
+    """Asynchronous OpenAI chat."""
     from openai import AsyncOpenAI
 
-    client_openai = AsyncOpenAI(base_url=base_url, api_key=api_key)
     t = time.time()
+    client_openai = AsyncOpenAI(base_url=base_url, api_key=api_key)
+    request_params = _build_openai_params(
+        messages=messages,
+        model=model,
+        max_completion_tokens=max_completion_tokens,
+        temperature=temperature,
+        stop=stop,
+        response_format=response_format,
+        seed=seed,
+        tools=tools,
+        tool_choice=tool_choice,
+        prediction=prediction,
+        reasoning_effort=reasoning_effort,
+        store=store,
+        metadata=metadata,
+        timeout=timeout,
+    )
 
-    if model in [
-        "o1-mini",
-        "o1-preview",
-        "o1",
-        "deepseek-chat",
-        "deepseek-reasoner",
-        "o3-mini",
-    ]:
-        # find any system message, save its value, and remove it from the list of messages
-        sys_msg = None
-        for i in range(len(messages)):
-            if messages[i].get("role") == "system":
-                sys_msg = messages.pop(i)["content"]
-                break
-
-        # if system message is not None, then prepend it to the first user message
-        if sys_msg:
-            for i in range(len(messages)):
-                if messages[i].get("role") == "user":
-                    messages[i]["content"] = sys_msg + "\n" + messages[i]["content"]
-                    break
-
-    request_params = {
-        "messages": messages,
-        "model": model,
-        "max_completion_tokens": max_completion_tokens,
-        "temperature": temperature,
-        "stop": stop,
-        "seed": seed,
-        "store": store,
-        "metadata": metadata,
-        "timeout": timeout,
-        "response_format": response_format,
-    }
-
-    if tools and len(tools) > 0 and model not in [
-        "o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"
-    ]:
-        # convert tools to OpenAI format
-        function_specs = get_function_specs(tools)
-        request_params["tools"] = function_specs
-        
-        # this dictionary maps the tool name to the actual tool
-        tool_dict = {}
+    # Build a tool dict if needed
+    tool_dict = {}
+    if tools and len(tools) > 0 and "tools" in request_params:
         tool_dict = {tool.__name__: tool for tool in tools}
     
-        if tool_choice:
-            request_params["tool_choice"] = tool_choice
-        
-        # disable parallel tool calls, since we want to chain tool calls together
-        request_params["parallel_tool_calls"] = False
-
-    if model in ["gpt-4o", "gpt-4o-mini"] and prediction:
-        request_params["prediction"] = prediction
-        del request_params["max_completion_tokens"]
-        del request_params[
-            "response_format"
-        ]  # completion with prediction output does not support max_completion_tokens and response_format
-
-    if model.startswith("o") or model == "deepseek-reasoner":
-        del request_params["temperature"]
-
-    if model in ["o1-mini", "o1-preview", "deepseek-chat", "deepseek-reasoner"]:
-        del request_params["response_format"]
-
-    if model.startswith("o") and reasoning_effort is not None:
-        request_params["reasoning_effort"] = reasoning_effort
-
-    if "response_format" in request_params and request_params["response_format"]:
-        del request_params[
-            "stop"
-        ]  # cannot have stop when using response_format, as that often leads to invalid JSON
+    # If response_format is set, we do parse
+    if request_params.get("response_format"):
         response = await client_openai.beta.chat.completions.parse(**request_params)
-        content = response.choices[0].message.parsed
     else:
         response = await client_openai.chat.completions.create(**request_params)
-        if response.choices[0].message.tool_calls:
-            message = response.choices[0].message
-            content = {
-                "tool_calls": [
-                    {
-                        "tool_name": tool_call.function.name,
-                        "tool_arguments": json.loads(tool_call.function.arguments),
-                        "tool_id": tool_call.id,
-                    }
-                    for tool_call in message.tool_calls
-                ],
-                "message_text": message.content,
-            }
-        else:
-            content = response.choices[0].message.content
 
-    if tools and len(tools) > 0:
-        final_answer = None
-
-        # Loop to handle dynamic chaining of tool calls.
-        while True:
-            # while True looks scary, but is actually quite safe
-            message = response.choices[0].message
-
-            # If the model requests a tool call, execute it.
-            if message.tool_calls:
-                tool_call = message.tool_calls[0]
-                func_name = tool_call.function.name
-                try:
-                    args = json.loads(tool_call.function.arguments)
-                except json.JSONDecodeError:
-                    args = {}
-
-                print(f"Calling function {func_name} with arguments: {args}")
-                tool_to_call = tool_dict[func_name]
-                
-                # this is synchronous execution of the tool for now, and will be blocking
-                # in the future, we can make this asynchronous
-                result = execute_tool(tool_to_call, args)
-                print(f"Result from {func_name}: {result}")
-
-                # if result is an int, bool, or float - convert it to string
-                if isinstance(result, (int, bool, float)):
-                    result = str(result)
-                
-                # Append the tool calls as an assistant response
-                request_params["messages"].append({
-                    "role": "assistant",
-                    "tool_calls": message.tool_calls,
-                })
-
-                # Append the tool call and its result to the conversation history.
-                request_params["messages"].append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result
-                })
-
-                # Make the next API call including the new message with the tool result.
-                response = await client_openai.chat.completions.create(**request_params)
-            else:
-                # No further function calls; extract the final answer.
-                content = message.content
-                break
-    elif request_params.get("response_format") and model not in ["o1-mini", "o1-preview"]:
-        content = response.choices[0].message.parsed
-    else:
-        content = response.choices[0].message.content
+    content, prompt_tokens, output_tokens, completion_token_details = await _process_openai_response_async(
+        client=client_openai,
+        response=response,
+        request_params=request_params,
+        tools=tools,
+        tool_dict=tool_dict,
+        response_format=response_format,
+        model=model
+    )
 
     return LLMResponse(
         model=model,
         content=content,
         time=round(time.time() - t, 3),
-        input_tokens=response.usage.prompt_tokens,
-        output_tokens=response.usage.completion_tokens,
-        output_tokens_details=response.usage.completion_tokens_details,
+        input_tokens=prompt_tokens,
+        output_tokens=output_tokens,
+        output_tokens_details=completion_token_details,
+    )
+
+#
+# --------------------------------------------------------------------------------
+# 3) TOGETHER
+# --------------------------------------------------------------------------------
+#
+
+def _build_together_params(
+    messages: List[Dict[str, str]],
+    model: str,
+    max_completion_tokens: int,
+    temperature: float,
+    stop: List[str],
+    seed: int = 0,
+):
+    return {
+        "messages": messages,
+        "model": model,
+        "max_tokens": max_completion_tokens,
+        "temperature": temperature,
+        "stop": stop,
+        "seed": seed,
+    }
+
+
+def _process_together_response(response):
+    if response.choices[0].finish_reason == "length":
+        raise Exception("Max tokens reached")
+    if len(response.choices) == 0:
+        raise Exception("Max tokens reached")
+    return (
+        response.choices[0].message.content,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
     )
 
 
@@ -575,34 +638,22 @@ def chat_together(
     seed: int = 0,
     tools=None,
     tool_choice=None,
-) -> LLMResponse:
-    """
-    Returns the response from the Together API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
-    Together's max_tokens refers to the maximum completion tokens.
-    Together doesn't have explicit json mode api constraints.
-    """
+):
+    """Synchronous Together chat."""
     from together import Together
 
-    client_together = Together()
     t = time.time()
-    response = client_together.chat.completions.create(
-        messages=messages,
-        model=model,
-        max_tokens=max_completion_tokens,
-        temperature=temperature,
-        stop=stop,
-        seed=seed,
-    )
-    if response.choices[0].finish_reason == "length":
-        raise Exception("Max tokens reached")
-    if len(response.choices) == 0:
-        raise Exception("Max tokens reached")
+    client_together = Together()
+    params = _build_together_params(messages, model, max_completion_tokens, temperature, stop, seed)
+    response = client_together.chat.completions.create(**params)
+
+    content, input_toks, output_toks = _process_together_response(response)
     return LLMResponse(
         model=model,
-        content=response.choices[0].message.content,
+        content=content,
         time=round(time.time() - t, 3),
-        input_tokens=response.usage.prompt_tokens,
-        output_tokens=response.usage.completion_tokens,
+        input_tokens=input_toks,
+        output_tokens=output_toks,
     )
 
 
@@ -621,35 +672,74 @@ async def chat_together_async(
     timeout=100,
     prediction=None,
     reasoning_effort=None,
-) -> LLMResponse:
-    """
-    Returns the response from the Together API, the time taken to generate the response, the number of input tokens used, and the number of output tokens used.
-    Together's max_tokens refers to the maximum completion tokens.
-    Together doesn't have explicit json mode api constraints.
-    """
+):
+    """Asynchronous Together chat."""
     from together import AsyncTogether
 
-    client_together = AsyncTogether(timeout=timeout)
     t = time.time()
-    response = await client_together.chat.completions.create(
-        messages=messages,
-        model=model,
-        max_tokens=max_completion_tokens,
-        temperature=temperature,
-        stop=stop,
-        seed=seed,
-    )
-    if response.choices[0].finish_reason == "length":
-        raise Exception("Max tokens reached")
-    if len(response.choices) == 0:
-        raise Exception("Max tokens reached")
+    client_together = AsyncTogether(timeout=timeout)
+    params = _build_together_params(messages, model, max_completion_tokens, temperature, stop, seed)
+    response = await client_together.chat.completions.create(**params)
+
+    content, input_toks, output_toks = _process_together_response(response)
     return LLMResponse(
         model=model,
-        content=response.choices[0].message.content,
+        content=content,
         time=round(time.time() - t, 3),
-        input_tokens=response.usage.prompt_tokens,
-        output_tokens=response.usage.completion_tokens,
+        input_tokens=input_toks,
+        output_tokens=output_toks,
     )
+
+#
+# --------------------------------------------------------------------------------
+# 4) GEMINI
+# --------------------------------------------------------------------------------
+#
+
+def _build_gemini_params(
+    messages: List[Dict[str, str]],
+    model: str,
+    max_completion_tokens: int,
+    temperature: float,
+    stop: List[str],
+    response_format=None,
+    seed: int = 0,
+    store=True,
+    metadata=None,
+):
+    """Construct parameters for Gemini's generate_content call."""
+    if messages[0]["role"] == "system":
+        system_msg = messages[0]["content"]
+        messages = messages[1:]
+    else:
+        system_msg = None
+
+    # Combine all user/assistant messages into one string
+    message = "\n".join([m["content"] for m in messages])
+    config = {
+        "temperature": temperature,
+        "system_instruction": system_msg,
+        "max_output_tokens": max_completion_tokens,
+        "stop_sequences": stop,
+    }
+
+    if response_format:
+        # If we want a JSON / Pydantic format
+        # "response_schema" is only recognized if the google.genai library supports it
+        config["response_mime_type"] = "application/json"
+        config["response_schema"] = response_format
+
+    return message, config
+
+
+def _process_gemini_response(response, response_format=None):
+    """Extract the response content & usage from Gemini result, optionally parse JSON."""
+    content = response.text
+    if response_format:
+        # Attempt to parse with pydantic model
+        content = response_format.model_validate_json(content)
+    usage_meta = response.usage_metadata
+    return content, usage_meta.prompt_token_count, usage_meta.candidates_token_count
 
 
 def chat_gemini(
@@ -664,56 +754,29 @@ def chat_gemini(
     tool_choice=None,
     store=True,
     metadata=None,
-) -> LLMResponse:
+):
+    """Synchronous Gemini chat."""
     from google import genai
     from google.genai import types
 
-    client = genai.Client(
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
     t = time.time()
-    if messages[0]["role"] == "system":
-        system_msg = messages[0]["content"]
-        messages = messages[1:]
-    else:
-        system_msg = None
-
-    message = "\n".join([i["content"] for i in messages])
-
-    generation_config = types.GenerateContentConfig(
-        temperature=temperature,
-        system_instruction=system_msg,
-        max_output_tokens=max_completion_tokens,
-        stop_sequences=stop,
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+    message, generation_cfg = _build_gemini_params(
+        messages, model, max_completion_tokens, temperature, stop, response_format, seed, store, metadata
     )
-
-    if response_format:
-        # use Pydantic classes for response_format
-        generation_config.response_mime_type = "application/json"
-        generation_config.response_schema = response_format
-
-        del generation_config.stop_sequences
 
     try:
-        response = client.models.generate_content(
-            model=model,
-            contents=message,
-            config=generation_config,
-        )
-        content = response.text
+        response = client.models.generate_content(model=model, contents=message, config=types.GenerateContentConfig(**generation_cfg))
     except Exception as e:
         raise Exception(f"An error occurred: {e}")
 
-    if response_format:
-        # convert the content into Pydantic class
-        content = response_format.model_validate_json(content)
-
+    content, input_toks, output_toks = _process_gemini_response(response, response_format)
     return LLMResponse(
         model=model,
         content=content,
         time=round(time.time() - t, 3),
-        input_tokens=response.usage_metadata.prompt_token_count,
-        output_tokens=response.usage_metadata.candidates_token_count,
+        input_tokens=input_toks,
+        output_tokens=output_toks,
     )
 
 
@@ -729,55 +792,34 @@ async def chat_gemini_async(
     tool_choice=None,
     store=True,
     metadata=None,
-    timeout=100,  # does not have timeout method
+    timeout=100,
     prediction=None,
     reasoning_effort=None,
-) -> LLMResponse:
+):
+    """Asynchronous Gemini chat."""
     from google import genai
     from google.genai import types
 
-    client = genai.Client(
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
     t = time.time()
-    if messages[0]["role"] == "system":
-        system_msg = messages[0]["content"]
-        messages = messages[1:]
-    else:
-        system_msg = None
-
-    message = "\n".join([i["content"] for i in messages])
-
-    generation_config = types.GenerateContentConfig(
-        temperature=temperature,
-        system_instruction=system_msg,
-        max_output_tokens=max_completion_tokens,
-        stop_sequences=stop,
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+    message, generation_cfg = _build_gemini_params(
+        messages, model, max_completion_tokens, temperature, stop, response_format, seed, store, metadata
     )
-
-    if response_format:
-        # use Pydantic classes for response_format
-        generation_config.response_mime_type = "application/json"
-        generation_config.response_schema = response_format
 
     try:
         response = await client.aio.models.generate_content(
             model=model,
             contents=message,
-            config=generation_config,
+            config=types.GenerateContentConfig(**generation_cfg),
         )
-        content = response.text
     except Exception as e:
         raise Exception(f"An error occurred: {e}")
 
-    if response_format:
-        # convert the content into Pydantic class
-        content = response_format.model_validate_json(content)
-
+    content, input_toks, output_toks = _process_gemini_response(response, response_format)
     return LLMResponse(
         model=model,
         content=content,
         time=round(time.time() - t, 3),
-        input_tokens=response.usage_metadata.prompt_token_count,
-        output_tokens=response.usage_metadata.candidates_token_count,
+        input_tokens=input_toks,
+        output_tokens=output_toks,
     )
