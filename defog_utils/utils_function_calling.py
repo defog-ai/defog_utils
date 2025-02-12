@@ -55,3 +55,19 @@ def execute_tool(tool: Callable, inputs: Dict[str, Any]):
     model = model_class.model_validate(inputs)
     # Call the tool function with the Pydantic model
     return tool(model)
+
+async def execute_tool_async(tool: Callable, inputs: Dict[str, Any]):
+    """
+    Execute a tool function with the given inputs.
+    The inputs are raw values that are expacted to match the function's parameter schema.
+    However, the function only takes a Pydantic model as input, so we need to convert the inputs to a Pydantic model.
+    We use the tool's function signature to get the Pydantic model class.
+    """
+    # Get the function signature
+    sig = inspect.signature(tool)
+    # Get the Pydantic model class from the function signature
+    model_class = sig.parameters["input"].annotation
+    # Convert the inputs to a Pydantic model
+    model = model_class.model_validate(inputs)
+    # Call the tool function with the Pydantic model
+    return await tool(model)

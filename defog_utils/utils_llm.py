@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Any, Union, Callable
 
 from .models import OpenAIToolChoice, OpenAIFunction, OpenAIForcedFunction
-from .utils_function_calling import get_function_specs, execute_tool
+from .utils_function_calling import get_function_specs, execute_tool, execute_tool_async
+import re
+import inspect
 
 LLM_COSTS_PER_TOKEN = {
     "chatgpt-4o": {"input_cost_per1k": 0.0025, "output_cost_per1k": 0.01},
@@ -416,7 +418,15 @@ async def _process_openai_response_async(
                     args = {}
 
                 tool_to_call = tool_dict[func_name]
-                result = execute_tool(tool_to_call, args)
+                # check if tool_to_call is async, by seeing if it has `await ` anywhere in its code
+                tool_source = inspect.getsource(tool_to_call)
+                # Define the regex pattern
+                pattern = r'\s+await\s+'
+                matches = re.findall(pattern, tool_source)
+                if any(match for match in matches):
+                    result = await execute_tool_async(tool_to_call, args)
+                else:
+                    result = execute_tool(tool_to_call, args)
 
                 # Append the tool calls as an assistant response
                 request_params["messages"].append({
