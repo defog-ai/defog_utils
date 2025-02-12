@@ -1,6 +1,7 @@
 import unittest
 import pytest
 from ..defog_utils.utils_multi_llm import chat_async
+from ..defog_utils.utils_llm import chat_openai
 from pydantic import BaseModel
 import httpx
 import os
@@ -31,6 +32,22 @@ DEFOG_API_KEY = os.environ.get("DEFOG_API_KEY")
 
 if DEFOG_API_KEY is None:
     raise ValueError("DEFOG_API_KEY is not set, the search test cannot be run")
+
+class SearchInput(BaseModel):
+    query: str = ""
+
+async def search(input: SearchInput):
+    """
+    This function searches Google for the given query. It then visits the first result page, and returns the HTML content of the page.
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            "https://api.defog.ai/unstructured_data/search",
+            json={"api_key": DEFOG_API_KEY, "user_question": input.query},
+        )
+        first_result_link = r.json()["organic"][0]["link"]
+        r = await client.get(first_result_link)
+    return clean_html_text(r.text)
 
 class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
     @pytest.mark.asyncio
@@ -66,24 +83,7 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
 
     @pytest.mark.asyncio
     async def test_tool_use_async_search(self):
-        class SearchInput(BaseModel):
-            query: str = ""
-
-        async def search(input: SearchInput):
-            """
-            This function searches Google for the given query. It then visits the first result page, and returns the HTML content of the page.
-            """
-            async with httpx.AsyncClient() as client:
-                r = await client.post(
-                    "https://api.defog.ai/unstructured_data/search",
-                    json={"api_key": DEFOG_API_KEY, "user_question": input.query},
-                )
-                first_result_link = r.json()["organic"][0]["link"]
-                r = await client.get(first_result_link)
-            return clean_html_text(r.text)
-
         tools = [search]
-
         result = await chat_async(
             model="gpt-4o",
             messages=[
@@ -93,5 +93,18 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
             ],
             tools=tools,
             max_retries=1,
+        )
+        self.assertIn('lawrence wong', result.content.lower())
+    
+    def test_async_tool_in_sync_function(self):
+        tools = [search]
+        result = chat_openai(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": "Who is the Prime Minister of Singapore right now (in 2025)? Recall that the current year is 2025. Return your answer as a single phrase.",},
+            ],
+            tools=tools,
         )
         self.assertIn('lawrence wong', result.content.lower())
