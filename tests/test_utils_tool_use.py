@@ -17,28 +17,31 @@ if DEFOG_API_KEY is None:
 # Functions for function calling
 # ==================================================================================================
 
+
 def clean_html_text(html_text):
     """
     Remove HTML tags from the given HTML text and return plain text.
-    
+
     Args:
         html_text (str): A string containing HTML content.
-    
+
     Returns:
         str: A string with the HTML tags removed.
     """
     # Parse the HTML content
     soup = BeautifulSoup(html_text, "html.parser")
-    
+
     # Extract text from the parsed HTML
     # The separator parameter defines what string to insert between text blocks.
     # strip=True removes leading and trailing whitespace from each piece of text.
     cleaned_text = soup.get_text(separator=" ", strip=True)
-    
+
     return cleaned_text
+
 
 class SearchInput(BaseModel):
     query: str = ""
+
 
 async def search(input: SearchInput):
     """
@@ -53,9 +56,11 @@ async def search(input: SearchInput):
         r = await client.get(first_result_link)
     return clean_html_text(r.text)
 
+
 class Numbers(BaseModel):
-            a: int = 0
-            b: int = 0
+    a: int = 0
+    b: int = 0
+
 
 def numsum(input: Numbers):
     """
@@ -63,11 +68,13 @@ def numsum(input: Numbers):
     """
     return input.a + input.b
 
+
 def numprod(input: Numbers):
     """
     This function return the product of two numbers
     """
     return input.a * input.b
+
 
 # ==================================================================================================
 # Tests
@@ -80,7 +87,7 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
         self.search_answer = "lawrence wong"
 
         self.arithmetic_qn = "What is the product of 31283 and 2323, added to 5? Return only the final answer, nothing else."
-        self.arithmetic_answer = '72670414'
+        self.arithmetic_answer = "72670414"
 
     @pytest.mark.asyncio
     async def test_tool_use_arithmetic_async_openai(self):
@@ -91,7 +98,8 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
             messages=[
                 {
                     "role": "user",
-                    "content": self.arithmetic_qn,},
+                    "content": self.arithmetic_qn,
+                },
             ],
             tools=tools,
         )
@@ -105,13 +113,13 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
             messages=[
                 {
                     "role": "user",
-                    "content": self.search_qn,},
+                    "content": self.search_qn,
+                },
             ],
             tools=tools,
             max_retries=1,
         )
         self.assertIn(self.search_answer, result.content.lower())
-    
 
     def test_async_tool_in_sync_function_openai(self):
         tools = self.tools
