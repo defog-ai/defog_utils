@@ -2,7 +2,7 @@ import unittest
 import pytest
 from ..defog_utils.utils_multi_llm import chat_async
 from pydantic import BaseModel
-import requests
+import httpx
 import os
 
 from bs4 import BeautifulSoup
@@ -65,20 +65,21 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.content, '50')
 
     @pytest.mark.asyncio
-    async def test_tool_use_search(self):
+    async def test_tool_use_async_search(self):
         class SearchInput(BaseModel):
             query: str = ""
 
-        def search(input: SearchInput):
+        async def search(input: SearchInput):
             """
             This function searches Google for the given query. It then visits the first result page, and returns the HTML content of the page.
             """
-            r = requests.post(
-                "https://api.defog.ai/unstructured_data/search",
-                json={"api_key": DEFOG_API_KEY, "user_question": input.query},
-            )
-            first_result_link = r.json()["organic"][0]["link"]
-            r = requests.get(first_result_link)
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    "https://api.defog.ai/unstructured_data/search",
+                    json={"api_key": DEFOG_API_KEY, "user_question": input.query},
+                )
+                first_result_link = r.json()["organic"][0]["link"]
+                r = await client.get(first_result_link)
             return clean_html_text(r.text)
 
         tools = [search]
@@ -91,5 +92,6 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
                     "content": "Who is the Prime Minister of Singapore right now (in 2025)? Recall that the current year is 2025. Return your answer as a single phrase.",},
             ],
             tools=tools,
+            max_retries=1,
         )
         self.assertIn('lawrence wong', result.content.lower())

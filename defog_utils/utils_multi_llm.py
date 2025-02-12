@@ -14,6 +14,7 @@ from .utils_llm import (
     chat_openai_async,
     chat_together_async,
 )
+import traceback
 
 
 def map_model_to_chat_fn(model: str) -> Callable:
@@ -84,13 +85,13 @@ async def chat_async(
     reasoning_effort=None,
     tools=None,
     tool_choice=None,
+    max_retries=3,
 ) -> LLMResponse:
     """
     Returns the response from the LLM API for a single model that is passed in.
     Includes retry logic with exponential backoff for up to 3 attempts.
     """
     llm_function = map_model_to_chat_fn_async(model)
-    max_retries = 3
     base_delay = 1  # Initial delay in seconds
 
     latest_error = None
@@ -146,12 +147,13 @@ async def chat_async(
             )
             print(f"Error: {e}", flush=True)
             latest_error = e
+            error_trace = traceback.format_exc()
             await asyncio.sleep(delay)
 
     # If we get here, all attempts failed
     raise Exception(
-        "All attempts at calling the chat_async function failed. The latest error was: ",
-        latest_error,
+        "All attempts at calling the chat_async function failed. The latest error traceback was: ",
+        error_trace,
     )
 
 

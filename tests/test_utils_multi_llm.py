@@ -146,7 +146,6 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
         for model in models:
             self.assertIn(model, responses)
             response = responses[model]
-            print(model, response)
             self.assertIsInstance(response, LLMResponse)
             self.assertIsInstance(response.content, str)
             self.assertIsInstance(response.time, float)
@@ -174,7 +173,6 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
         for model in models:
             self.assertIn(model, responses)
             response = responses[model]
-            print(model, response)
             self.assertIsInstance(response, LLMResponse)
             self.assertIsInstance(response.content, str)
             self.assertIsInstance(response.time, float)
@@ -204,8 +202,8 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
                 temperature=0.0,
                 stop=[";"],
                 seed=0,
+                max_retries=1,
             )
-            print(model, response)
             self.assertIsInstance(response.content, str)
             self.assertIsInstance(response.time, float)
 
@@ -229,8 +227,8 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
                 temperature=0.0,
                 stop=[";"],
                 seed=0,
+                max_retries=1,
             )
-            print(model, response)
             self.check_sql(response.content)
             self.assertIsInstance(response.time, float)
     
@@ -252,6 +250,7 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
                 seed=0,
                 response_format=ResponseFormat,
                 reasoning_effort=effort,
+                max_retries=1,
             )
             self.check_sql(response.content.sql)
             self.assertIsInstance(response.content.reasoning, str)
@@ -272,8 +271,8 @@ class TestChatClients(unittest.IsolatedAsyncioTestCase):
                 stop=[";"],
                 seed=0,
                 response_format=ResponseFormat,
+                max_retries=1,
             )
-            print(model, response)
             self.check_sql(response.content.sql)
             self.assertIsInstance(response.content.reasoning, str)
 
