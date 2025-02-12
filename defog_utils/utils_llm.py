@@ -664,7 +664,14 @@ def chat_together(
 
     t = time.time()
     client_together = Together()
-    params = _build_together_params(messages, model, max_completion_tokens, temperature, stop, seed)
+    params = _build_together_params(
+        messages=messages,
+        model=model,
+        max_completion_tokens=max_completion_tokens,
+        temperature=temperature,
+        stop=stop,
+        seed=seed,
+    )
     response = client_together.chat.completions.create(**params)
 
     content, input_toks, output_toks = _process_together_response(response)
@@ -698,7 +705,14 @@ async def chat_together_async(
 
     t = time.time()
     client_together = AsyncTogether(timeout=timeout)
-    params = _build_together_params(messages, model, max_completion_tokens, temperature, stop, seed)
+    params = _build_together_params(
+        messages=messages,
+        model=model,
+        max_completion_tokens=max_completion_tokens,
+        temperature=temperature,
+        stop=stop,
+        seed=seed,
+    )
     response = await client_together.chat.completions.create(**params)
 
     content, input_toks, output_toks = _process_together_response(response)
@@ -782,7 +796,15 @@ def chat_gemini(
     t = time.time()
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
     message, generation_cfg = _build_gemini_params(
-        messages, model, max_completion_tokens, temperature, stop, response_format, seed, store, metadata
+        messages=messages,
+        model=model,
+        max_completion_tokens=max_completion_tokens,
+        temperature=temperature,
+        stop=stop,
+        response_format=response_format,
+        seed=seed,
+        store=store,
+        metadata=metadata,
     )
 
     try:
@@ -823,7 +845,15 @@ async def chat_gemini_async(
     t = time.time()
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
     message, generation_cfg = _build_gemini_params(
-        messages, model, max_completion_tokens, temperature, stop, response_format, seed, store, metadata
+        messages=messages,
+        model=model,
+        max_completion_tokens=max_completion_tokens,
+        temperature=temperature,
+        stop=stop,
+        response_format=response_format,
+        seed=seed,
+        store=store,
+        metadata=metadata,
     )
 
     try:
