@@ -1,9 +1,9 @@
 import inspect
-from typing import Callable, List, Dict, Any
+from typing import Callable, List, Dict, Any, Union
 from pydantic import BaseModel
-from .models import OpenAIFunction
+from .models import OpenAIFunctionSpecs, AnthropicFunctionSpecs
 
-def get_function_specs(functions: List[Callable]) -> List[OpenAIFunction]:
+def get_function_specs(functions: List[Callable], model: str) -> List[Union[OpenAIFunctionSpecs, AnthropicFunctionSpecs]]:
     """Return a list of dictionaries describing each function's name, docstring, and input schema."""
     function_specs = []
 
@@ -29,14 +29,24 @@ def get_function_specs(functions: List[Callable]) -> List[OpenAIFunction]:
         # Get the JSON schema from the model
         input_schema = model_class.model_json_schema()
 
-        function_specs.append({
-            "type": "function",
-            "function": {
+        if model.startswith("gpt") or model.startswith("o1") or model.startswith("chatgpt") or model.startswith("o3"):
+            function_specs.append({
+                "type": "function",
+                "function": {
+                    "name": func.__name__,
+                    "description": docstring,
+                    "parameters": input_schema,
+                }
+            })
+        elif model.startswith("claude"):
+            function_specs.append({
                 "name": func.__name__,
                 "description": docstring,
-                "parameters": input_schema,
-            }
-        })
+                "input_schema": input_schema,
+                }
+            )
+        else:
+            raise ValueError(f"Model does not support function calling: {model}")
 
     return function_specs
 
