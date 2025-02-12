@@ -94,8 +94,6 @@ async def chat_async(
     llm_function = map_model_to_chat_fn_async(model)
     base_delay = 1  # Initial delay in seconds
 
-    latest_error = None
-
     for attempt in range(max_retries):
         try:
             if attempt > 0 and backup_model is not None:
@@ -146,7 +144,6 @@ async def chat_async(
                 flush=True,
             )
             print(f"Error: {e}", flush=True)
-            latest_error = e
             error_trace = traceback.format_exc()
             await asyncio.sleep(delay)
 
