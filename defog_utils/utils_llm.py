@@ -264,23 +264,6 @@ def _process_anthropic_response_handler(
                 tool_dict=tool_dict,
                 is_async=is_async,
             )  # Caller must await this
-
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop and loop.is_running():
-            return asyncio.ensure_future(
-                _process_anthropic_response(
-                    client=client,
-                    response=response,
-                    request_params=request_params,
-                    tools=tools,
-                    tool_dict=tool_dict,
-                    is_async=is_async,
-                )
-            )  # Returns a future
         else:
             return asyncio.run(
                 _process_anthropic_response(
@@ -633,25 +616,6 @@ def _process_openai_response_handler(
                 model=model,
                 is_async=is_async,
             )  # Caller must await this
-
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop and loop.is_running():
-            return asyncio.ensure_future(
-                _process_openai_response(
-                    client=client,
-                    response=response,
-                    request_params=request_params,
-                    tools=tools,
-                    tool_dict=tool_dict,
-                    response_format=response_format,
-                    model=model,
-                    is_async=is_async,
-                )
-            )  # Returns a future
         else:
             return asyncio.run(
                 _process_openai_response(
