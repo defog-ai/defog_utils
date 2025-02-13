@@ -60,6 +60,7 @@ class LLMResponse:
     output_tokens: int
     output_tokens_details: Optional[Dict[str, int]] = None
     cost_in_cents: Optional[float] = None
+    tools_used: Optional[List[str]] = None
 
     def __post_init__(self):
         if self.model in LLM_COSTS_PER_TOKEN:
@@ -150,6 +151,7 @@ async def _process_anthropic_response(
         raise Exception("Max tokens reached")
 
     # If we have tools, handle dynamic chaining:
+    tools_used = []
     if tools and len(tools) > 0:
         while True:
             # Check if the response contains a tool call
@@ -182,6 +184,7 @@ async def _process_anthropic_response(
                         result = execute_tool(tool_to_call, args)
                 except Exception as e:
                     raise Exception(f"Error executing tool `{func_name}`: {e}")
+                tools_used.append(func_name)
 
                 # Append the tool call as an assistant response
                 request_params["messages"].append(
@@ -225,7 +228,7 @@ async def _process_anthropic_response(
         content = response.content[0].text
 
     usage = response.usage
-    return content, usage.input_tokens, usage.output_tokens
+    return content, tools_used, usage.input_tokens, usage.output_tokens
 
 
 def _process_anthropic_response_handler(
@@ -326,7 +329,7 @@ def chat_anthropic(
         tool_dict = {tool.__name__: tool for tool in tools}
 
     response = client.messages.create(**request_params)
-    content, input_toks, output_toks = _process_anthropic_response_handler(
+    content, tools_used, input_toks, output_toks = _process_anthropic_response_handler(
         client=client,
         response=response,
         request_params=request_params,
@@ -341,6 +344,7 @@ def chat_anthropic(
         time=round(time.time() - t, 3),
         input_tokens=input_toks,
         output_tokens=output_toks,
+        tools_used=tools_used,
     )
 
 
@@ -381,7 +385,7 @@ async def chat_anthropic_async(
         tool_dict = {tool.__name__: tool for tool in tools}
 
     response = await client.messages.create(**params)
-    content, input_toks, output_toks = await _process_anthropic_response_handler(
+    content, tools_used, input_toks, output_toks = await _process_anthropic_response_handler(
         client=client,
         response=response,
         request_params=params,
@@ -396,6 +400,7 @@ async def chat_anthropic_async(
         time=round(time.time() - t, 3),
         input_tokens=input_toks,
         output_tokens=output_toks,
+        tools_used=tools_used,
     )
 
 
@@ -521,6 +526,7 @@ async def _process_openai_response(
         raise Exception("Max tokens reached")
 
     # If we have tools, handle dynamic chaining:
+    tools_used = []
     if tools and len(tools) > 0:
         while True:
             message = response.choices[0].message
@@ -545,6 +551,7 @@ async def _process_openai_response(
                         result = execute_tool(tool_to_call, args)
                 except Exception as e:
                     raise Exception(f"Error executing tool `{func_name}`: {e}")
+                tools_used.append(func_name)
 
                 # Append the tool calls as an assistant response
                 request_params["messages"].append(
@@ -580,6 +587,7 @@ async def _process_openai_response(
     usage = response.usage
     return (
         content,
+        tools_used,
         usage.prompt_tokens,
         usage.completion_tokens,
         usage.completion_tokens_details,
@@ -712,7 +720,7 @@ def chat_openai(
     else:
         response = client_openai.chat.completions.create(**request_params)
 
-    content, prompt_tokens, output_tokens, completion_token_details = (
+    content, tools_used, prompt_tokens, output_tokens, completion_token_details = (
         _process_openai_response_handler(
             client=client_openai,
             response=response,
@@ -732,6 +740,7 @@ def chat_openai(
         input_tokens=prompt_tokens,
         output_tokens=output_tokens,
         output_tokens_details=completion_token_details,
+        tools_used=tools_used,
     )
 
 
@@ -786,7 +795,7 @@ async def chat_openai_async(
     else:
         response = await client_openai.chat.completions.create(**request_params)
 
-    content, prompt_tokens, output_tokens, completion_token_details = (
+    content, tools_used, prompt_tokens, output_tokens, completion_token_details = (
         await _process_openai_response_handler(
             client=client_openai,
             response=response,
@@ -806,6 +815,7 @@ async def chat_openai_async(
         input_tokens=prompt_tokens,
         output_tokens=output_tokens,
         output_tokens_details=completion_token_details,
+        tools_used=tools_used,
     )
 
 
