@@ -463,7 +463,9 @@ def _build_openai_params(
         request_params["tools"] = function_specs
         if tool_choice:
             request_params["tool_choice"] = tool_choice
-        request_params["parallel_tool_calls"] = False
+        
+        if model in ["gpt-4o", "gpt-4o-mini"]:
+            request_params["parallel_tool_calls"] = False
 
     # Some models do not allow temperature or response_format:
     if model.startswith("o") or model == "deepseek-reasoner":
