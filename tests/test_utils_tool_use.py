@@ -3,7 +3,7 @@ import pytest
 from ..defog_utils.utils_multi_llm import chat_async, chat
 from ..defog_utils.utils_llm import chat_anthropic, chat_openai
 from ..defog_utils.utils_function_calling import get_function_specs
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import httpx
 import os
 
@@ -41,7 +41,7 @@ def clean_html_text(html_text):
 
 
 class SearchInput(BaseModel):
-    query: str = ""
+    query: str = Field(default="", description="The query to search for")
 
 
 async def search(input: SearchInput):
@@ -94,7 +94,7 @@ class TestGetFunctionSpecs(unittest.TestCase):
                     "description": "This function searches Google for the given query. It then visits the first result page, and returns the HTML content of the page.",
                     "parameters": {
                         "properties": {
-                            "query": {"default": "", "title": "Query", "type": "string"}
+                            "query": {"default": "", "description": "The query to search for", "title": "Query", "type": "string"}
                         },
                         "title": "SearchInput",
                         "type": "object",
@@ -138,7 +138,7 @@ class TestGetFunctionSpecs(unittest.TestCase):
                 "description": "This function searches Google for the given query. It then visits the first result page, and returns the HTML content of the page.",
                 "input_schema": {
                     "properties": {
-                        "query": {"default": "", "title": "Query", "type": "string"}
+                        "query": {"default": "", "description": "The query to search for", "title": "Query", "type": "string"}
                     },
                     "title": "SearchInput",
                     "type": "object",
