@@ -384,13 +384,15 @@ async def chat_anthropic_async(
         tool_dict = {tool.__name__: tool for tool in tools}
 
     response = await client.messages.create(**params)
-    content, tools_used, input_toks, output_toks = await _process_anthropic_response_handler(
-        client=client,
-        response=response,
-        request_params=params,
-        tools=tools,
-        tool_dict=tool_dict,
-        is_async=True,
+    content, tools_used, input_toks, output_toks = (
+        await _process_anthropic_response_handler(
+            client=client,
+            response=response,
+            request_params=params,
+            tools=tools,
+            tool_dict=tool_dict,
+            is_async=True,
+        )
     )
 
     return LLMResponse(
@@ -605,7 +607,7 @@ def _process_openai_response_handler(
 ):
     """
     Processes OpenAI's response by determining whether to execute the response handling
-    synchronously or asynchronously. This function acts as a wrapper around _process_openai_response, 
+    synchronously or asynchronously. This function acts as a wrapper around _process_openai_response,
     deciding the execution mode based on the is_async parameter.
 
     Parameters:
