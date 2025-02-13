@@ -104,6 +104,7 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
             tools=tools,
         )
         self.assertEqual(result.content, self.arithmetic_answer)
+        self.assertSetEqual(set(result.tools_used), {"numsum", "numprod"})
 
     @pytest.mark.asyncio
     async def test_tool_use_search_async_openai(self):
@@ -120,6 +121,41 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
             max_retries=1,
         )
         self.assertIn(self.search_answer, result.content.lower())
+        self.assertSetEqual(set(result.tools_used), {"search"})
+
+    @pytest.mark.asyncio
+    async def test_tool_use_arithmetic_async_anthropic(self):
+        tools = self.tools
+
+        result = await chat_async(
+            model="claude-3-haiku-20240307",
+            messages=[
+                {
+                    "role": "user",
+                    "content": self.arithmetic_qn,
+                },
+            ],
+            tools=tools,
+        )
+        self.assertEqual(result.content, self.arithmetic_answer)
+        self.assertSetEqual(set(result.tools_used), {"numsum", "numprod"})
+
+    @pytest.mark.asyncio
+    async def test_tool_use_search_async_anthropic(self):
+        tools = self.tools
+        result = await chat_async(
+            model="claude-3-haiku-20240307",
+            messages=[
+                {
+                    "role": "user",
+                    "content": self.search_qn,
+                },
+            ],
+            tools=tools,
+            max_retries=1,
+        )
+        self.assertIn(self.search_answer, result.content.lower())
+        self.assertSetEqual(set(result.tools_used), {"search"})
 
     def test_async_tool_in_sync_function_openai(self):
         tools = self.tools
@@ -134,6 +170,7 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
             tools=tools,
         )
         self.assertIn(self.search_answer, result_openai.content.lower())
+        self.assertSetEqual(set(result_openai.tools_used), {"search"})
 
     def test_async_tool_in_sync_function_anthropic(self):
         tools = self.tools
@@ -148,3 +185,4 @@ class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
             tools=tools,
         )
         self.assertIn(self.search_answer, result_anthropic.content.lower())
+        self.assertSetEqual(set(result_anthropic.tools_used), {"search"})
