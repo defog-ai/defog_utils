@@ -2,6 +2,7 @@ import unittest
 import pytest
 from ..defog_utils.utils_multi_llm import chat_async, chat
 from ..defog_utils.utils_llm import chat_anthropic, chat_openai
+from ..defog_utils.utils_function_calling import get_function_specs
 from pydantic import BaseModel
 import httpx
 import os
@@ -64,14 +65,14 @@ class Numbers(BaseModel):
 
 def numsum(input: Numbers):
     """
-    This function return the sum of two numbers
+    This function returns the sum of two numbers
     """
     return input.a + input.b
 
 
 def numprod(input: Numbers):
     """
-    This function return the product of two numbers
+    This function returns the product of two numbers
     """
     return input.a * input.b
 
@@ -79,9 +80,106 @@ def numprod(input: Numbers):
 # ==================================================================================================
 # Tests
 # ==================================================================================================
+class TestGetFunctionSpecs(unittest.TestCase):
+    def setUp(self):
+        self.openai_model = "gpt-4o"
+        self.anthropic_model = "claude-3-haiku-20240307"
+        self.tools = [search, numsum, numprod]
+        self.maxDiff = None
+        self.openai_specs = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search",
+                    "description": "This function searches Google for the given query. It then visits the first result page, and returns the HTML content of the page.",
+                    "parameters": {
+                        "properties": {
+                            "query": {"default": "", "title": "Query", "type": "string"}
+                        },
+                        "title": "SearchInput",
+                        "type": "object",
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "numsum",
+                    "description": "This function returns the sum of two numbers",
+                    "parameters": {
+                        "properties": {
+                            "a": {"default": 0, "title": "A", "type": "integer"},
+                            "b": {"default": 0, "title": "B", "type": "integer"},
+                        },
+                        "title": "Numbers",
+                        "type": "object",
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "numprod",
+                    "description": "This function returns the product of two numbers",
+                    "parameters": {
+                        "properties": {
+                            "a": {"default": 0, "title": "A", "type": "integer"},
+                            "b": {"default": 0, "title": "B", "type": "integer"},
+                        },
+                        "title": "Numbers",
+                        "type": "object",
+                    },
+                },
+            },
+        ]
+        self.anthropic_specs = [
+            {
+                "name": "search",
+                "description": "This function searches Google for the given query. It then visits the first result page, and returns the HTML content of the page.",
+                "input_schema": {
+                    "properties": {
+                        "query": {"default": "", "title": "Query", "type": "string"}
+                    },
+                    "title": "SearchInput",
+                    "type": "object",
+                },
+            },
+            {
+                "name": "numsum",
+                "description": "This function returns the sum of two numbers",
+                "input_schema": {
+                    "properties": {
+                        "a": {"default": 0, "title": "A", "type": "integer"},
+                        "b": {"default": 0, "title": "B", "type": "integer"},
+                    },
+                    "title": "Numbers",
+                    "type": "object",
+                },
+            },
+            {
+                "name": "numprod",
+                "description": "This function returns the product of two numbers",
+                "input_schema": {
+                    "properties": {
+                        "a": {"default": 0, "title": "A", "type": "integer"},
+                        "b": {"default": 0, "title": "B", "type": "integer"},
+                    },
+                    "title": "Numbers",
+                    "type": "object",
+                },
+            },
+        ]
+
+    def test_get_function_specs(self):
+        openai_specs = get_function_specs(self.tools, self.openai_model)
+        anthropic_specs = get_function_specs(self.tools, self.anthropic_model)
+
+        self.assertEqual(openai_specs, self.openai_specs)
+        self.assertEqual(anthropic_specs, self.anthropic_specs)
+
+
 class TestToolUseFeatures(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-
         self.tools = [search, numsum, numprod]
         self.search_qn = "Who is the Prime Minister of Singapore right now (in 2025)? Recall that the current year is 2025. Return your answer as a single phrase."
         self.search_answer = "lawrence wong"
