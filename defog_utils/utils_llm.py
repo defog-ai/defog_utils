@@ -174,14 +174,9 @@ async def _process_anthropic_response(
                 except KeyError:
                     raise Exception(f"Tool `{func_name}` not found.")
 
-                # check if tool_to_call is async, by seeing if it has `await ` anywhere in its code
-                tool_source = inspect.getsource(tool_to_call)
-                pattern = r"\s+await\s+"
-                matches = re.findall(pattern, tool_source)
-
                 # Execute tool depending on whether it is async
                 try:
-                    if any(match for match in matches):
+                    if inspect.iscoroutinefunction(tool_to_call):
                         result = await execute_tool_async(tool_to_call, args)
                     else:
                         result = execute_tool(tool_to_call, args)
@@ -542,14 +537,9 @@ async def _process_openai_response(
                 except KeyError:
                     raise Exception(f"Tool `{func_name}` not found")
 
-                # check if tool_to_call is async, by seeing if it has `await ` anywhere in its code
-                tool_source = inspect.getsource(tool_to_call)
-                pattern = r"\s+await\s+"
-                matches = re.findall(pattern, tool_source)
-
                 # Execute tool depending on whether it is async
                 try:
-                    if any(match for match in matches):
+                    if inspect.iscoroutinefunction(tool_to_call):
                         result = await execute_tool_async(tool_to_call, args)
                     else:
                         result = execute_tool(tool_to_call, args)
