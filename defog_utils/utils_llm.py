@@ -83,8 +83,7 @@ class LLMResponse:
                 + self.output_tokens
                 / 1000
                 * LLM_COSTS_PER_TOKEN[model_name]["output_cost_per1k"]
-                * 100
-            )
+            ) * 100
 
 
 #
